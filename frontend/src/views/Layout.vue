@@ -18,6 +18,10 @@
           <router-link to="/my-history" class="nav-link">
             <el-icon :size="14"><Clock /></el-icon> 浏览历史
           </router-link>
+          <router-link to="/compare" class="nav-link compare-nav-link">
+            <el-icon :size="14"><ScaleToOriginal /></el-icon> 商品对比
+            <el-badge v-if="compareCount" :value="compareCount" class="compare-badge" />
+          </router-link>
           <template v-if="userStore.isLoggedIn">
             <router-link to="/my-favorites" class="nav-link fav-link">
               <el-icon :size="14"><Star /></el-icon> 我的收藏
@@ -78,6 +82,7 @@
         </Suspense>
       </router-view>
     </main>
+    <CompareBar />
     <footer class="footer">
       <p>© 电商购物平台 · 题目 197</p>
     </footer>
@@ -89,10 +94,15 @@ import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import api from '../api'
-import { Loading, ArrowDown, Lightning, Star, Clock } from '@element-plus/icons-vue'
+import { Loading, ArrowDown, Lightning, Star, Clock, ScaleToOriginal } from '@element-plus/icons-vue'
+import { useCompareStore } from '../stores/compare'
+import CompareBar from '../components/CompareBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const compareStore = useCompareStore()
+
+const compareCount = computed(() => compareStore.count ?? 0)
 
 const cartCount = computed(() => {
   if (!userStore.isLoggedIn) return 0
@@ -236,6 +246,17 @@ function handleCommand(cmd) {
 }
 
 .fav-badge {
+  margin-left: 4px;
+}
+
+.compare-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compare-badge {
   margin-left: 4px;
 }
 

@@ -22,6 +22,22 @@
               加入购物车
             </el-button>
             <el-button
+              v-if="compareStore.isInCompare(product.id)"
+              type="success"
+              :icon="ScaleToOriginal"
+              disabled
+            >
+              已加入对比
+            </el-button>
+            <el-button
+              v-else
+              :icon="ScaleToOriginal"
+              :disabled="compareStore.isFull"
+              @click="handleAddCompare"
+            >
+              加入对比
+            </el-button>
+            <el-button
               v-if="favorited === true"
               type="warning"
               :icon="StarFilled"
@@ -134,15 +150,17 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, Star, StarFilled, Bell } from '@element-plus/icons-vue'
+import { Loading, Star, StarFilled, Bell, ScaleToOriginal } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
 import { useViewHistoryStore } from '../stores/viewHistory'
+import { useCompareStore } from '../stores/compare'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const viewHistory = useViewHistoryStore()
+const compareStore = useCompareStore()
 const loading = ref(true)
 const product = ref(null)
 const quantity = ref(1)
@@ -361,6 +379,16 @@ async function addToCart() {
     ElMessage.success('已加入购物车')
     userStore.cartCount = (userStore.cartCount || 0) + quantity.value
   } catch (e) {
+  }
+}
+
+async function handleAddCompare() {
+  if (!product.value) return
+  const result = await compareStore.addProduct(product.value)
+  if (result.success) {
+    ElMessage.success(result.message)
+  } else {
+    ElMessage.warning(result.message)
   }
 }
 </script>

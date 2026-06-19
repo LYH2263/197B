@@ -33,6 +33,7 @@ const routes = [
       { path: 'admin/seckill', name: 'AdminSeckill', component: () => import('../views/AdminSeckill.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/shipments', name: 'AdminShipments', component: () => import('../views/AdminShipments.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/browse-stats', name: 'AdminBrowseStats', component: () => import('../views/AdminBrowseStats.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+      { path: 'compare', name: 'ProductCompare', component: () => import('../views/ProductCompare.vue') },
     ],
   },
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },

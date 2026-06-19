@@ -37,7 +37,7 @@
               </div>
             </div>
             <div class="summary-card">
-              <div class="summary-icon"><el-icon :size="28" color="#f59e0b"><Fire /></el-icon></div>
+              <div class="summary-icon"><el-icon :size="28" color="#f59e0b"><Lightning /></el-icon></div>
               <div>
                 <div class="summary-label">TOP1 浏览量</div>
                 <div class="summary-value highlight">{{ top10[0]?.viewCount || 0 }}</div>
@@ -58,13 +58,13 @@
                 }"
               >
                 <template v-if="$index === 0">
-                  <el-icon><FirstPlace /></el-icon>
+                  <el-icon color="#f59e0b"><Trophy /></el-icon>
                 </template>
                 <template v-else-if="$index === 1">
-                  <el-icon><SecondPlace /></el-icon>
+                  <el-icon color="#94a3b8"><StarFilled /></el-icon>
                 </template>
                 <template v-else-if="$index === 2">
-                  <el-icon><ThirdPlace /></el-icon>
+                  <el-icon color="#d97706"><StarFilled /></el-icon>
                 </template>
                 <template v-else>
                   #{{ $index + 1 }}
@@ -145,8 +145,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  DataAnalysis, Refresh, TrendCharts, Goods, Fire,
-  FirstPlace, SecondPlace, ThirdPlace,
+  DataAnalysis, Refresh, TrendCharts, Goods, Lightning, Trophy, StarFilled,
 } from '@element-plus/icons-vue'
 import api from '../api'
 

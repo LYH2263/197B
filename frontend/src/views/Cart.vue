@@ -77,7 +77,7 @@
 
         <div v-if="promotion?.recommendProducts?.length" class="recommend-panel">
           <div class="recommend-header">
-            <el-icon class="recommend-icon" color="#ef4444"><Fire /></el-icon>
+            <el-icon class="recommend-icon" color="#ef4444"><Lightning /></el-icon>
             <span class="recommend-title">凑单推荐</span>
             <span class="recommend-hint">（价格在差额内的最低价商品，快捷加购）</span>
           </div>
@@ -130,7 +130,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Present, TrendCharts, Fire } from '@element-plus/icons-vue'
+import { Present, TrendCharts, Lightning } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
 

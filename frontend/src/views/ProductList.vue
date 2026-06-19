@@ -24,9 +24,8 @@
         v-for="p in products"
         :key="p.id"
         class="product-card"
-        @click="$router.push(`/products/${p.id}`)"
       >
-        <div class="product-img">
+        <div class="product-img" @click="$router.push(`/products/${p.id}`)">
           <img
             :src="p.mainImage || '/images/default-product.svg'"
             alt=""
@@ -34,9 +33,20 @@
           />
         </div>
         <div class="product-info">
-          <div class="product-name">{{ p.name }}</div>
-          <div class="product-subtitle">{{ p.subtitle }}</div>
+          <div class="product-name" @click="$router.push(`/products/${p.id}`)">{{ p.name }}</div>
+          <div class="product-subtitle" @click="$router.push(`/products/${p.id}`)">{{ p.subtitle }}</div>
           <div class="product-price">¥ {{ p.price }}</div>
+          <div class="product-actions">
+            <el-button
+              size="small"
+              :type="compareStore.isInCompare(p.id) ? 'success' : 'default'"
+              :disabled="compareStore.isInCompare(p.id) || compareStore.isFull"
+              :icon="ScaleToOriginal"
+              @click.stop="handleAddCompare(p)"
+            >
+              {{ compareStore.isInCompare(p.id) ? '已对比' : '对比' }}
+            </el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -47,9 +57,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { ScaleToOriginal } from '@element-plus/icons-vue'
 import api from '../api'
+import { useCompareStore } from '../stores/compare'
 
 const route = useRoute()
+const compareStore = useCompareStore()
 const loading = ref(true)
 const categories = ref([])
 const products = ref([])
@@ -78,6 +92,15 @@ onMounted(() => {
     if (res.data.code === 200) categories.value = res.data.data || []
   })
 })
+
+async function handleAddCompare(product) {
+  const result = await compareStore.addProduct(product)
+  if (result.success) {
+    ElMessage.success(result.message)
+  } else {
+    ElMessage.warning(result.message)
+  }
+}
 </script>
 
 <style scoped>
@@ -168,5 +191,9 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-primary);
   margin-top: 8px;
+}
+
+.product-actions {
+  margin-top: 12px;
 }
 </style>
