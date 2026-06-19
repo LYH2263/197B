@@ -16,6 +16,10 @@
             <el-badge v-if="cartCount" :value="cartCount" class="cart-badge" />
           </router-link>
           <template v-if="userStore.isLoggedIn">
+            <router-link to="/my-favorites" class="nav-link fav-link">
+              <el-icon :size="14"><Star /></el-icon> 我的收藏
+              <el-badge v-if="favCount" :value="favCount" class="fav-badge" />
+            </router-link>
             <router-link to="/points" class="nav-link">
               <span class="points-nav">
                 积分
@@ -79,7 +83,7 @@ import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import api from '../api'
-import { Loading, ArrowDown, Lightning } from '@element-plus/icons-vue'
+import { Loading, ArrowDown, Lightning, Star } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -87,6 +91,11 @@ const userStore = useUserStore()
 const cartCount = computed(() => {
   if (!userStore.isLoggedIn) return 0
   return userStore.cartCount ?? 0
+})
+
+const favCount = computed(() => {
+  if (!userStore.isLoggedIn) return 0
+  return userStore.favoriteCount ?? 0
 })
 
 onMounted(async () => {
@@ -100,6 +109,9 @@ onMounted(async () => {
     } catch {
       userStore.cartCount = 0
     }
+    try {
+      await userStore.fetchFavoriteCount()
+    } catch {}
   }
 })
 
@@ -207,6 +219,17 @@ function handleCommand(cmd) {
 }
 
 .cart-badge {
+  margin-left: 4px;
+}
+
+.fav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fav-badge {
   margin-left: 4px;
 }
 

@@ -16,6 +16,7 @@ const routes = [
       { path: 'after-sale/:id', name: 'AfterSaleDetail', component: () => import('../views/AfterSaleDetail.vue'), meta: { requiresAuth: true } },
       { path: 'after-sale/apply/:orderItemId', name: 'AfterSaleApply', component: () => import('../views/AfterSaleApply.vue'), meta: { requiresAuth: true } },
       { path: 'my-reviews', name: 'MyReviews', component: () => import('../views/MyReviews.vue'), meta: { requiresAuth: true } },
+      { path: 'my-favorites', name: 'MyFavorites', component: () => import('../views/MyFavorites.vue'), meta: { requiresAuth: true } },
       { path: 'coupon-center', name: 'CouponCenter', component: () => import('../views/CouponCenter.vue') },
       { path: 'my-coupons', name: 'MyCoupons', component: () => import('../views/MyCoupons.vue'), meta: { requiresAuth: true } },
       { path: 'points', name: 'PointsCenter', component: () => import('../views/PointsCenter.vue'), meta: { requiresAuth: true } },

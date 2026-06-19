@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.FavoriteGroupMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.FavoriteGroup">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO favorite_group (user_id, name, sort_order)
+        VALUES (#{userId}, #{name}, #{sortOrder})
+    </insert>
+
+    <update id="updateById">
+        UPDATE favorite_group SET name = #{name}, sort_order = #{sortOrder} WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM favorite_group WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdAndName" resultMap="BaseResultMap">
+        SELECT * FROM favorite_group WHERE user_id = #{userId} AND name = #{name}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM favorite_group WHERE user_id = #{userId} ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM favorite_group WHERE id = #{id}
+    </delete>
+</mapper>

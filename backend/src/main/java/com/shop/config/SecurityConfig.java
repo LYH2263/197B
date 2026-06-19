@@ -39,6 +39,8 @@ public class SecurityConfig {
                         .requestMatchers("/coupons/available", "/coupons/calculate").permitAll()
                         .requestMatchers("/exchange/products", "/exchange/products/**").permitAll()
                         .requestMatchers("/seckill/sessions", "/seckill/sessions/**").permitAll()
+                        .requestMatchers("/favorites/check/**").permitAll()
+                        .requestMatchers("/favorites/scan-price-alerts", "/favorites/trigger-alerts/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

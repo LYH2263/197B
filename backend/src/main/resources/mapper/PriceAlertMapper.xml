@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.PriceAlertMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.PriceAlert">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="product_id" property="productId"/>
+        <result column="target_price" property="targetPrice"/>
+        <result column="status" property="status"/>
+        <result column="triggered_at" property="triggeredAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO price_alert (user_id, product_id, target_price, status)
+        VALUES (#{userId}, #{productId}, #{targetPrice}, #{status})
+    </insert>
+
+    <update id="updateById">
+        UPDATE price_alert SET target_price = #{targetPrice}, status = #{status}, triggered_at = #{triggeredAt} WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM price_alert WHERE id = #{id}
+    </select>
+
+    <select id="selectActiveByUserIdAndProductId" resultMap="BaseResultMap">
+        SELECT * FROM price_alert WHERE user_id = #{userId} AND product_id = #{productId} AND status = 0 LIMIT 1
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM price_alert WHERE user_id = #{userId} ORDER BY id DESC
+    </select>
+
+    <select id="selectAllActive" resultMap="BaseResultMap">
+        SELECT * FROM price_alert WHERE status = 0 ORDER BY id ASC
+    </select>
+
+    <update id="cancelByUserIdAndProductId">
+        UPDATE price_alert SET status = 2 WHERE user_id = #{userId} AND product_id = #{productId} AND status = 0
+    </update>
+
+    <update id="triggerById">
+        UPDATE price_alert SET status = 1, triggered_at = NOW() WHERE id = #{id}
+    </update>
+</mapper>

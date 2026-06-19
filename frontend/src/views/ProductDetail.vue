@@ -21,6 +21,26 @@
             <el-button type="primary" :disabled="product.stock < 1" @click="addToCart">
               加入购物车
             </el-button>
+            <el-button
+              v-if="favorited === true"
+              type="warning"
+              :icon="StarFilled"
+              :loading="favoriteLoading"
+              @click="toggleFavorite"
+            >
+              已收藏
+            </el-button>
+            <el-button
+              v-else
+              :icon="Star"
+              :loading="favoriteLoading"
+              @click="toggleFavorite"
+            >
+              收藏
+            </el-button>
+            <el-button :icon="Bell" :disabled="!userStore.isLoggedIn" @click="openPriceAlert">
+              降价提醒
+            </el-button>
           </div>
           <div v-if="product.detail" class="detail" v-html="product.detail" />
         </el-col>
@@ -43,6 +63,7 @@
         </div>
         <el-empty v-if="reviews.length === 0" description="暂无评价" />
       </section>
+
       <el-dialog v-model="reviewVisible" title="发表评价" width="420px" @close="resetReviewForm">
         <div v-if="loadingReviewable" class="review-dialog-loading">
           <el-icon class="is-loading"><Loading /></el-icon>
@@ -79,6 +100,31 @@
           <el-button type="primary" :loading="reviewSubmitting" @click="submitReview">提交</el-button>
         </template>
       </el-dialog>
+
+      <el-dialog v-model="alertVisible" title="设置目标价提醒" width="420px">
+        <el-form :model="alertForm" label-width="100px">
+          <el-form-item label="当前价格">
+            <span class="current-price">¥ {{ product?.price }}</span>
+          </el-form-item>
+          <el-form-item label="目标价格" required>
+            <el-input-number
+              v-model="alertForm.targetPrice"
+              :min="0.01"
+              :precision="2"
+              :step="1"
+              :controls="false"
+              style="width: 100%"
+              placeholder="请输入目标价格"
+            />
+            <p class="hint">当商品价格 ≤ 目标价时，将为您触发站内提醒</p>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button v-if="hasActiveAlert" type="danger" @click="cancelPriceAlert">取消提醒</el-button>
+          <el-button @click="alertVisible = false">关闭</el-button>
+          <el-button type="primary" :loading="alertSubmitting" @click="submitPriceAlert">确认设置</el-button>
+        </template>
+      </el-dialog>
     </template>
     <el-empty v-else-if="!loading" description="商品不存在" />
   </div>
@@ -87,8 +133,8 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading, Star, StarFilled, Bell } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
 
@@ -105,6 +151,14 @@ const loadingReviewable = ref(false)
 const reviewSubmitting = ref(false)
 const reviewForm = reactive({ orderId: null, productId: null, rating: 5, content: '' })
 
+const favorited = ref(false)
+const favoriteLoading = ref(false)
+
+const alertVisible = ref(false)
+const alertSubmitting = ref(false)
+const hasActiveAlert = ref(false)
+const alertForm = reactive({ targetPrice: null })
+
 const productId = computed(() => Number(route.params.id))
 
 onMounted(async () => {
@@ -118,7 +172,92 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  if (userStore.isLoggedIn) {
+    try {
+      const fRes = await api.get(`/favorites/check/${productId.value}`)
+      if (fRes.data.code === 200) favorited.value = !!fRes.data.data
+      const aRes = await api.get(`/favorites/price-alert/${productId.value}`)
+      if (aRes.data.code === 200 && aRes.data.data) {
+        hasActiveAlert.value = true
+        alertForm.targetPrice = aRes.data.data.targetPrice
+      }
+    } catch {}
+  }
 })
+
+async function toggleFavorite() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  favoriteLoading.value = true
+  try {
+    if (favorited.value) {
+      await api.delete(`/favorites/${productId.value}`)
+      favorited.value = false
+      ElMessage.success('已取消收藏')
+      userStore.favoriteCount = Math.max(0, (userStore.favoriteCount || 0) - 1)
+    } else {
+      await api.post('/favorites/add', { productId: productId.value })
+      favorited.value = true
+      ElMessage.success('已加入收藏夹')
+      userStore.favoriteCount = (userStore.favoriteCount || 0) + 1
+    }
+  } catch (e) {
+  } finally {
+    favoriteLoading.value = false
+  }
+}
+
+function openPriceAlert() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  alertVisible.value = true
+  if (!alertForm.targetPrice && product.value) {
+    alertForm.targetPrice = Number(product.value.price) * 0.9
+  }
+}
+
+async function submitPriceAlert() {
+  if (!alertForm.targetPrice || alertForm.targetPrice <= 0) {
+    ElMessage.warning('请输入有效的目标价格')
+    return
+  }
+  alertSubmitting.value = true
+  try {
+    await api.post('/favorites/price-alert', {
+      productId: productId.value,
+      targetPrice: alertForm.targetPrice,
+    })
+    ElMessage.success('已设置目标价提醒')
+    hasActiveAlert.value = true
+    alertVisible.value = false
+  } catch (e) {
+  } finally {
+    alertSubmitting.value = false
+  }
+}
+
+async function cancelPriceAlert() {
+  try {
+    await ElMessageBox.confirm('确定要取消该商品的价格提醒吗？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  alertSubmitting.value = true
+  try {
+    await api.delete(`/favorites/price-alert/${productId.value}`)
+    ElMessage.success('已取消价格提醒')
+    hasActiveAlert.value = false
+    alertForm.targetPrice = null
+    alertVisible.value = false
+  } catch (e) {
+  } finally {
+    alertSubmitting.value = false
+  }
+}
 
 async function loadReviewableOrders() {
   loadingReviewable.value = true
@@ -131,7 +270,6 @@ async function loadReviewableOrders() {
     const orders = (ordersRes.data.code === 200 ? ordersRes.data.data : []) || []
     const myReviews = (myReviewsRes.data.code === 200 ? myReviewsRes.data.data : []) || []
     const reviewedSet = new Set(myReviews.map((r) => `${r.orderId}-${r.productId}`))
-    // 已付款(1)、已发货(2)、已完成(3) 均可评价
     const reviewable = orders.filter((o) => o.status >= 1 && o.status <= 3)
     const itemPromises = reviewable.map((o) => api.get(`/orders/${o.id}/items`))
     const itemResults = await Promise.all(itemPromises)
@@ -191,7 +329,6 @@ async function submitReview() {
     const rRes = await api.get(`/reviews/product/${productId.value}`)
     if (rRes.data.code === 200) reviews.value = rRes.data.data || []
   } catch (e) {
-    // api 已统一 ElMessage.error
   } finally {
     reviewSubmitting.value = false
   }
@@ -207,7 +344,6 @@ async function addToCart() {
     ElMessage.success('已加入购物车')
     userStore.cartCount = (userStore.cartCount || 0) + quantity.value
   } catch (e) {
-    // api 已统一 ElMessage.error
   }
 }
 </script>
@@ -266,6 +402,7 @@ async function addToCart() {
   gap: 12px;
   align-items: center;
   margin-bottom: 28px;
+  flex-wrap: wrap;
 }
 
 .detail {
@@ -319,6 +456,18 @@ async function addToCart() {
 }
 
 .review-time {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.current-price {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.hint {
+  margin: 6px 0 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
 }

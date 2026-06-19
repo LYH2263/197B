@@ -3,12 +3,14 @@ package com.shop;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 电商购物平台启动类
  */
 @SpringBootApplication
 @MapperScan("com.shop.mapper")
+@EnableScheduling
 public class ShopApplication {
 
     public static void main(String[] args) {

@@ -6,6 +6,7 @@ export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
   const user = ref(null)
   const cartCount = ref(0)
+  const favoriteCount = ref(0)
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
@@ -27,10 +28,25 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function fetchFavoriteCount() {
+    if (!token.value) {
+      favoriteCount.value = 0
+      return
+    }
+    try {
+      const res = await api.get('/favorites/count')
+      if (res.data.code === 200) favoriteCount.value = res.data.data?.count ?? 0
+    } catch {
+      favoriteCount.value = 0
+    }
+  }
+
   function logout() {
     setToken('')
     user.value = null
+    cartCount.value = 0
+    favoriteCount.value = 0
   }
 
-  return { token, user, cartCount, isLoggedIn, isAdmin, setToken, fetchUser, logout }
+  return { token, user, cartCount, favoriteCount, isLoggedIn, isAdmin, setToken, fetchUser, fetchFavoriteCount, logout }
 })
