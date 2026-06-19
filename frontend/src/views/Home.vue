@@ -9,6 +9,91 @@
           去逛逛
         </el-button>
       </div>
+      <div class="hero-privacy">
+        <el-tooltip :content="viewHistory.privacyMode ? '隐私浏览已开启：期间不记录浏览历史' : '开启隐私浏览：期间不记录浏览历史'">
+          <el-switch
+            v-model="viewHistory.privacyMode"
+            @change="viewHistory.setPrivacyMode($event)"
+            active-color="#8b5cf6"
+            inactive-color="#d1d5db"
+            size="large"
+          />
+        </el-tooltip>
+        <span class="privacy-label" :class="{ active: viewHistory.privacyMode }">
+          <el-icon :size="16"><View /></el-icon>
+          {{ viewHistory.privacyMode ? '隐私中' : '隐私模式' }}
+        </span>
+      </div>
+    </section>
+
+    <section
+      v-if="recentItems.length > 0 && !viewHistory.privacyMode"
+      class="section recent-section"
+    >
+      <div class="section-header">
+        <h2 class="section-title">
+          <el-icon :size="22" color="#6366f1"><Clock /></el-icon>
+          继续浏览
+        </h2>
+        <el-button type="primary" link @click="$router.push('/my-history')">
+          查看全部 <el-icon><ArrowRight /></el-icon>
+        </el-button>
+      </div>
+      <div class="recent-scroll-wrap">
+        <div
+          ref="scrollRef"
+          class="recent-scroll"
+          @wheel.prevent="onWheel"
+        >
+          <div
+            v-for="(item, idx) in recentItems"
+            :key="item.id + '_' + idx"
+            class="recent-card"
+            @click="goDetail(item.productId)"
+          >
+            <div class="recent-img">
+              <img
+                :src="item.productImage || '/images/default-product.svg'"
+                :alt="item.productName"
+                @error="$event.target.src = '/images/default-product.svg'"
+              />
+              <div v-if="(item.status ?? 1) === 0" class="recent-off-badge">已下架</div>
+            </div>
+            <div class="recent-info">
+              <div class="recent-name">{{ item.productName }}</div>
+              <div class="recent-prices">
+                <span class="recent-price-current">¥ {{ item.currentPrice }}</span>
+                <span
+                  v-if="(item.priceChangePercent ?? 0) !== 0"
+                  class="recent-price-change"
+                  :class="(item.priceChangePercent ?? 0) > 0 ? 'up' : 'down'"
+                >
+                  {{ (item.priceChangePercent ?? 0) > 0 ? '↑' : '↓' }}
+                  {{ formatPercent(item.priceChangePercent) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <el-button
+          v-if="canScrollLeft"
+          class="scroll-btn scroll-btn--left"
+          circle
+          size="small"
+          @click="scrollLeft"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <el-button
+          v-if="canScrollRight"
+          class="scroll-btn scroll-btn--right"
+          circle
+          size="small"
+          @click="scrollRight"
+        >
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+      </div>
     </section>
 
     <section class="section seckill-banner" @click="$router.push('/seckill')">
@@ -69,13 +154,175 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Lightning, Right } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  Lightning, Right, Clock, View, ArrowRight, ArrowLeft,
+} from '@element-plus/icons-vue'
 import api from '../api'
+import { useViewHistoryStore } from '../stores/viewHistory'
+import { useUserStore } from '../stores/user'
+
+const router = useRouter()
+const viewHistory = useViewHistoryStore()
+const userStore = useUserStore()
 
 const loading = ref(true)
 const categories = ref([])
 const products = ref([])
+const recentItems = ref([])
+const loadingRecent = ref(false)
+const scrollRef = ref(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+function formatPercent(v) {
+  if (v == null) return '0.00%'
+  const n = Number(v)
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'
+}
+
+function goDetail(pid) {
+  router.push({ name: 'ProductDetail', params: { id: pid } })
+}
+
+async function enrichRecent(localItems) {
+  if (!Array.isArray(localItems) || localItems.length === 0) return []
+  const idsMap = {}
+  for (const i of localItems) {
+    idsMap[Number(i.productId)] = 1
+  }
+  const ids = Object.keys(idsMap).map(Number)
+  if (ids.length === 0) return []
+
+  let allProducts = []
+  try {
+    const res = await api.get('/products')
+    if (res.data.code === 200 && Array.isArray(res.data.data)) {
+      allProducts = res.data.data
+    }
+  } catch {}
+  const pMap = {}
+  for (const p of allProducts) {
+    if (ids.includes(Number(p.id))) pMap[Number(p.id)] = p
+  }
+
+  const result = []
+  for (const i of localItems) {
+    const pid = Number(i.productId)
+    const p = pMap[pid]
+    const name = i.productName || (p ? p.name : `商品 #${pid}`)
+    const image = i.productImage || (p ? p.mainImage : '')
+    const status = i.status != null ? i.status : (p ? p.status : 1)
+    const stock = i.stock != null ? i.stock : (p ? p.stock : 0)
+    const currentPrice = i.currentPrice ?? (p ? p.price : i.viewedPrice)
+    const diff = Number(currentPrice) - Number(i.viewedPrice || 0)
+    const viewedPrice = Number(i.viewedPrice || 0)
+    let percent = 0
+    if (viewedPrice > 0) percent = (diff / viewedPrice) * 100
+    result.push({
+      ...i,
+      productName: name,
+      productImage: image,
+      status,
+      stock,
+      currentPrice,
+      priceChange: diff,
+      priceChangePercent: percent,
+    })
+  }
+  return result
+}
+
+async function loadRecent() {
+  if (viewHistory.privacyMode) {
+    recentItems.value = []
+    return
+  }
+  loadingRecent.value = true
+  try {
+    if (viewHistory.isLoggedIn) {
+      const res = await api.get('/view-history/recent', { params: { limit: 6 } })
+      if (res.data.code === 200 && Array.isArray(res.data.data)) {
+        recentItems.value = res.data.data.slice(0, 6)
+        const local = viewHistory.getLocalRecent(6)
+        if (local.length > 0) {
+          const enriched = await enrichRecent(local)
+          const existingIds = new Set(recentItems.value.map(i => Number(i.productId)))
+          for (const li of enriched) {
+            if (!existingIds.has(Number(li.productId))) {
+              recentItems.value.push(li)
+            }
+          }
+          recentItems.value.sort((a, b) => {
+            const ta = parseTime(a.viewedAt)
+            const tb = parseTime(b.viewedAt)
+            return tb - ta
+          })
+          recentItems.value = recentItems.value.slice(0, 6)
+        }
+      }
+    } else {
+      const local = viewHistory.getLocalRecent(6)
+      recentItems.value = await enrichRecent(local)
+    }
+  } finally {
+    loadingRecent.value = false
+    await nextTick()
+    updateScrollButtons()
+  }
+}
+
+function parseTime(v) {
+  if (!v) return 0
+  const d = typeof v === 'string' ? new Date(v) : new Date(v)
+  return isNaN(d.getTime()) ? 0 : d.getTime()
+}
+
+function updateScrollButtons() {
+  const el = scrollRef.value
+  if (!el) return
+  canScrollLeft.value = el.scrollLeft > 4
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+}
+
+function onWheel(e) {
+  const el = scrollRef.value
+  if (!el) return
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    el.scrollLeft += e.deltaY
+    updateScrollButtons()
+  }
+}
+
+function scrollLeft() {
+  const el = scrollRef.value
+  if (!el) return
+  el.scrollBy({ left: -320, behavior: 'smooth' })
+  setTimeout(updateScrollButtons, 300)
+}
+
+function scrollRight() {
+  const el = scrollRef.value
+  if (!el) return
+  el.scrollBy({ left: 320, behavior: 'smooth' })
+  setTimeout(updateScrollButtons, 300)
+}
+
+watch(
+  () => viewHistory.localList.length,
+  () => loadRecent(),
+)
+
+watch(
+  () => userStore.isLoggedIn,
+  () => loadRecent(),
+)
+
+watch(
+  () => viewHistory.privacyMode,
+  () => loadRecent(),
+)
 
 onMounted(async () => {
   try {
@@ -88,6 +335,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  loadRecent()
 })
 </script>
 
@@ -121,6 +369,41 @@ onMounted(async () => {
   padding: 48px 24px;
 }
 
+.hero-privacy {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.2s;
+}
+
+.hero-privacy:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.privacy-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.privacy-label.active {
+  color: #fff;
+  font-weight: 600;
+}
+
 .hero h1 {
   font-size: 2.25rem;
   font-weight: 700;
@@ -148,6 +431,172 @@ onMounted(async () => {
 .hero-cta:hover {
   background: rgba(255, 255, 255, 0.95) !important;
   color: var(--color-primary-hover) !important;
+}
+
+.section {
+  margin-bottom: 40px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.recent-section {
+  padding: 24px;
+  background: linear-gradient(180deg, #f5f3ff 0%, #fff 100%);
+  border: 1px solid #e9d5ff;
+  border-radius: var(--radius-lg);
+}
+
+.recent-scroll-wrap {
+  position: relative;
+}
+
+.recent-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px 4px 12px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: #c4b5fd transparent;
+}
+
+.recent-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.recent-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-scroll::-webkit-scrollbar-thumb {
+  background: #c4b5fd;
+  border-radius: 3px;
+}
+
+.recent-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a78bfa;
+}
+
+.recent-card {
+  flex: 0 0 180px;
+  scroll-snap-align: start;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.25s;
+}
+
+.recent-card:hover {
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+  border-color: #a78bfa;
+  transform: translateY(-2px);
+}
+
+.recent-img {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.recent-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.recent-card:hover .recent-img img {
+  transform: scale(1.06);
+}
+
+.recent-off-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.recent-info {
+  padding: 10px 12px 12px;
+}
+
+.recent-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+
+.recent-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.recent-price-current {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.recent-price-change {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.recent-price-change.up {
+  color: #ef4444;
+}
+
+.recent-price-change.down {
+  color: #10b981;
+}
+
+.scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-border);
+  z-index: 5;
+}
+
+.scroll-btn--left {
+  left: -8px;
+}
+
+.scroll-btn--right {
+  right: -8px;
 }
 
 .seckill-banner {
@@ -213,18 +662,6 @@ onMounted(async () => {
 .seckill-banner-btn:hover {
   background: rgba(255, 255, 255, 0.95) !important;
   color: #dc2626 !important;
-}
-
-.section {
-  margin-bottom: 40px;
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 20px;
-  letter-spacing: -0.02em;
 }
 
 .category-list {

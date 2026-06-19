@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.ViewHistoryMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.ViewHistory">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="product_id" property="productId"/>
+        <result column="viewed_price" property="viewedPrice"/>
+        <result column="viewed_at" property="viewedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <resultMap id="Top10ResultMap" type="com.shop.dto.ViewHistoryTop10VO">
+        <result column="product_id" property="productId"/>
+        <result column="product_name" property="productName"/>
+        <result column="product_image" property="productImage"/>
+        <result column="current_price" property="currentPrice"/>
+        <result column="view_count" property="viewCount"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO view_history (user_id, product_id, viewed_price, viewed_at)
+        VALUES (#{userId}, #{productId}, #{viewedPrice}, #{viewedAt})
+    </insert>
+
+    <update id="updateById">
+        UPDATE view_history
+        SET viewed_price = #{viewedPrice}, viewed_at = #{viewedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM view_history WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdAndProductId" resultMap="BaseResultMap">
+        SELECT * FROM view_history
+        WHERE user_id = #{userId} AND product_id = #{productId}
+        ORDER BY viewed_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserIdWithPage" resultMap="BaseResultMap">
+        SELECT * FROM view_history
+        WHERE user_id = #{userId}
+        ORDER BY viewed_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM view_history WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectRecentByUserId" resultMap="BaseResultMap">
+        SELECT * FROM view_history
+        WHERE user_id = #{userId}
+        ORDER BY viewed_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM view_history WHERE user_id = #{userId} AND id = #{id}
+    </delete>
+
+    <delete id="deleteBatchByIds">
+        DELETE FROM view_history
+        WHERE user_id = #{userId} AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteAllByUserId">
+        DELETE FROM view_history WHERE user_id = #{userId}
+    </delete>
+
+    <select id="selectTop10Products" resultMap="Top10ResultMap">
+        SELECT
+            vh.product_id,
+            p.name AS product_name,
+            p.main_image AS product_image,
+            p.price AS current_price,
+            COUNT(*) AS view_count
+        FROM view_history vh
+        INNER JOIN product p ON vh.product_id = p.id
+        WHERE vh.viewed_at &gt;= #{startTime}
+        GROUP BY vh.product_id, p.name, p.main_image, p.price
+        ORDER BY view_count DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

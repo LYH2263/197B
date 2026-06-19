@@ -137,10 +137,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Star, StarFilled, Bell } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
+import { useViewHistoryStore } from '../stores/viewHistory'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const viewHistory = useViewHistoryStore()
 const loading = ref(true)
 const product = ref(null)
 const quantity = ref(1)
@@ -167,7 +169,22 @@ onMounted(async () => {
       api.get(`/products/${productId.value}`),
       api.get(`/reviews/product/${productId.value}`),
     ])
-    if (pRes.data.code === 200) product.value = pRes.data.data
+    if (pRes.data.code === 200) {
+      product.value = pRes.data.data
+      if (product.value) {
+        viewHistory.addRecord(
+          productId.value,
+          product.value.price,
+          {
+            name: product.value.name,
+            mainImage: product.value.mainImage,
+            categoryId: product.value.categoryId,
+            status: product.value.status,
+            stock: product.value.stock,
+          }
+        )
+      }
+    }
     if (rRes.data.code === 200) reviews.value = rRes.data.data || []
   } finally {
     loading.value = false

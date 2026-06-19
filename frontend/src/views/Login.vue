@@ -28,13 +28,15 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../api'
 import { useUserStore } from '../stores/user'
+import { useViewHistoryStore } from '../stores/viewHistory'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const viewHistory = useViewHistoryStore()
 
 const formRef = ref(null)
 const loading = ref(false)
@@ -53,7 +55,35 @@ async function onSubmit() {
       userStore.setToken(res.data.data.token)
       await userStore.fetchUser()
       ElMessage.success('登录成功')
-      router.push(route.query.redirect ? String(route.query.redirect) : '/')
+
+      const hasLocal = viewHistory.hasLocalItems()
+      let merged = false
+      if (hasLocal) {
+        try {
+          await ElMessageBox.confirm(
+            `检测到本地有 ${viewHistory.localList.length} 条浏览记录，是否合并到当前账户？合并后本地记录将清除。`,
+            '合并浏览历史',
+            {
+              confirmButtonText: '立即合并',
+              cancelButtonText: '稍后合并',
+              type: 'info',
+            },
+          )
+          const result = await viewHistory.mergeToAccount()
+          const count = result?.mergedCount || 0
+          if (count > 0) ElMessage.success(`成功合并 ${count} 条浏览记录`)
+          merged = true
+        } catch {
+          // 用户选择稍后合并
+        }
+      }
+
+      const redirect = route.query.redirect ? String(route.query.redirect) : '/'
+      if (!merged && hasLocal && redirect === '/') {
+        router.push('/my-history')
+      } else {
+        router.push(redirect)
+      }
     } else {
       ElMessage.error(res.data.message || '登录失败')
     }

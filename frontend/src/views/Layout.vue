@@ -15,6 +15,9 @@
             购物车
             <el-badge v-if="cartCount" :value="cartCount" class="cart-badge" />
           </router-link>
+          <router-link to="/my-history" class="nav-link">
+            <el-icon :size="14"><Clock /></el-icon> 浏览历史
+          </router-link>
           <template v-if="userStore.isLoggedIn">
             <router-link to="/my-favorites" class="nav-link fav-link">
               <el-icon :size="14"><Star /></el-icon> 我的收藏
@@ -41,6 +44,7 @@
               <router-link to="/admin/seckill" class="nav-link">秒杀管理</router-link>
               <router-link to="/admin/reviews" class="nav-link">评价管理</router-link>
               <router-link to="/admin/after-sale" class="nav-link">售后管理</router-link>
+              <router-link to="/admin/browse-stats" class="nav-link">浏览统计</router-link>
             </template>
             <el-dropdown @command="handleCommand" trigger="click">
               <span class="user-trigger">
@@ -85,7 +89,7 @@ import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import api from '../api'
-import { Loading, ArrowDown, Lightning, Star } from '@element-plus/icons-vue'
+import { Loading, ArrowDown, Lightning, Star, Clock } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()

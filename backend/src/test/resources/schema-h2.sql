@@ -312,3 +312,63 @@ CREATE TABLE IF NOT EXISTS delivery_issue (
 );
 CREATE INDEX IF NOT EXISTS idx_issue_shipment_id ON delivery_issue(shipment_id);
 
+CREATE TABLE IF NOT EXISTS promotion (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(128) NOT NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP NOT NULL,
+  scope_type TINYINT NOT NULL DEFAULT 1,
+  applicable_category BIGINT,
+  status TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_promotion_status ON promotion(status);
+CREATE INDEX IF NOT EXISTS idx_promotion_time ON promotion(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_promotion_category ON promotion(applicable_category);
+
+CREATE TABLE IF NOT EXISTS promotion_tier (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  promotion_id BIGINT NOT NULL,
+  threshold DECIMAL(12,2) NOT NULL,
+  discount DECIMAL(12,2) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_tier_promotion_id ON promotion_tier(promotion_id);
+CREATE INDEX IF NOT EXISTS idx_tier_threshold ON promotion_tier(threshold);
+
+CREATE TABLE IF NOT EXISTS order_promotion_snapshot (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT NOT NULL,
+  promotion_id BIGINT NOT NULL,
+  promotion_name VARCHAR(128) NOT NULL,
+  tier_id BIGINT NOT NULL,
+  tier_threshold DECIMAL(12,2) NOT NULL,
+  tier_discount DECIMAL(12,2) NOT NULL,
+  promotion_discount DECIMAL(12,2) NOT NULL,
+  scope_type TINYINT NOT NULL,
+  applicable_category BIGINT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_snapshot_order_id ON order_promotion_snapshot(order_id);
+CREATE INDEX IF NOT EXISTS idx_snapshot_promotion_id ON order_promotion_snapshot(promotion_id);
+
+ALTER TABLE order_main ADD COLUMN IF NOT EXISTS promotion_id BIGINT;
+ALTER TABLE order_main ADD COLUMN IF NOT EXISTS promotion_discount DECIMAL(12,2) NOT NULL DEFAULT 0.00;
+CREATE INDEX IF NOT EXISTS idx_order_promotion_id ON order_main(promotion_id);
+
+CREATE TABLE IF NOT EXISTS view_history (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  product_id BIGINT NOT NULL,
+  viewed_price DECIMAL(12,2) NOT NULL,
+  viewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_vh_user_id ON view_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_vh_product_id ON view_history(product_id);
+CREATE INDEX IF NOT EXISTS idx_vh_user_product ON view_history(user_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_vh_viewed_at ON view_history(viewed_at);
+

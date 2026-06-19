@@ -11,12 +11,14 @@ import com.shop.entity.PointsProduct;
 import com.shop.entity.Shipment;
 import com.shop.entity.User;
 import com.shop.mapper.UserMapper;
+import com.shop.dto.ViewHistoryTop10VO;
 import com.shop.service.AdminService;
 import com.shop.service.AfterSaleService;
 import com.shop.service.OrderService;
 import com.shop.service.PointsExchangeService;
 import com.shop.service.PointsLevelService;
 import com.shop.service.ShipmentService;
+import com.shop.service.ViewHistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +39,7 @@ public class AdminController {
     private final PointsLevelService pointsLevelService;
     private final PointsExchangeService pointsExchangeService;
     private final ShipmentService shipmentService;
+    private final ViewHistoryService viewHistoryService;
 
     private String getAdminName(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof Long)) return "管理员";
@@ -240,5 +243,10 @@ public class AdminController {
         String no = body.get("expressNo") != null ? String.valueOf(body.get("expressNo")) : null;
         pointsExchangeService.shipOrder(id, company, no);
         return Result.ok();
+    }
+
+    @GetMapping("/view-history/top10")
+    public Result<List<ViewHistoryTop10VO>> getViewHistoryTop10() {
+        return Result.ok(viewHistoryService.getTop10ProductsLast7Days());
     }
 }
