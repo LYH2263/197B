@@ -12,10 +12,12 @@
           </router-link>
           <template v-if="userStore.isLoggedIn">
             <router-link to="/orders" class="nav-link">我的订单</router-link>
+            <router-link to="/after-sale" class="nav-link">我的售后</router-link>
             <router-link to="/my-reviews" class="nav-link">我的评价</router-link>
             <template v-if="userStore.isAdmin">
               <router-link to="/admin/users" class="nav-link">用户管理</router-link>
               <router-link to="/admin/reviews" class="nav-link">评价管理</router-link>
+              <router-link to="/admin/after-sale" class="nav-link">售后管理</router-link>
             </template>
             <el-dropdown @command="handleCommand" trigger="click">
               <span class="user-trigger">

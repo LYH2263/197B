@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.AfterSaleLogMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.AfterSaleLog">
+        <id column="id" property="id"/>
+        <result column="after_sale_id" property="afterSaleId"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="operator_role" property="operatorRole"/>
+        <result column="action" property="action"/>
+        <result column="status_from" property="statusFrom"/>
+        <result column="status_to" property="statusTo"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO after_sale_log (after_sale_id, operator_id, operator_name, operator_role, action, status_from, status_to, remark)
+        VALUES (#{afterSaleId}, #{operatorId}, #{operatorName}, #{operatorRole}, #{action}, #{statusFrom}, #{statusTo}, #{remark})
+    </insert>
+    <select id="selectByAfterSaleId" resultMap="BaseResultMap">
+        SELECT * FROM after_sale_log WHERE after_sale_id = #{afterSaleId} ORDER BY id ASC
+    </select>
+</mapper>

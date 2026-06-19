@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.AfterSaleSupplementMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.AfterSaleSupplement">
+        <id column="id" property="id"/>
+        <result column="supplement_no" property="supplementNo"/>
+        <result column="after_sale_id" property="afterSaleId"/>
+        <result column="user_id" property="userId"/>
+        <result column="price_diff" property="priceDiff"/>
+        <result column="status" property="status"/>
+        <result column="paid_at" property="paidAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO after_sale_supplement (supplement_no, after_sale_id, user_id, price_diff, status)
+        VALUES (#{supplementNo}, #{afterSaleId}, #{userId}, #{priceDiff}, #{status})
+    </insert>
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM after_sale_supplement WHERE id = #{id}
+    </select>
+    <select id="selectByNo" resultMap="BaseResultMap">
+        SELECT * FROM after_sale_supplement WHERE supplement_no = #{supplementNo}
+    </select>
+    <select id="selectByAfterSaleId" resultMap="BaseResultMap">
+        SELECT * FROM after_sale_supplement WHERE after_sale_id = #{afterSaleId} ORDER BY id DESC LIMIT 1
+    </select>
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM after_sale_supplement WHERE user_id = #{userId} ORDER BY id DESC
+    </select>
+    <update id="updateStatus">
+        UPDATE after_sale_supplement SET status = #{status}, paid_at = #{paidAt} WHERE id = #{id}
+    </update>
+</mapper>

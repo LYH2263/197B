@@ -21,18 +21,29 @@
           <el-table-column prop="totalAmount" label="小计" width="120">
             <template #default="{ row }">¥ {{ row.totalAmount }}</template>
           </el-table-column>
-          <el-table-column label="评价" width="100">
+          <el-table-column label="评价/售后" width="160">
             <template #default="{ row }">
-              <el-button
-                v-if="canReview(order.status) && !hasReview(row.productId)"
-                type="primary"
-                link
-                size="small"
-                @click="openReview(row)"
-              >
-                评价
-              </el-button>
-              <span v-else-if="hasReview(row.productId)">已评价</span>
+              <div class="col-actions">
+                <el-button
+                  v-if="canReview(order.status) && !hasReview(row.productId)"
+                  type="primary"
+                  link
+                  size="small"
+                  @click="openReview(row)"
+                >
+                  评价
+                </el-button>
+                <span v-else-if="hasReview(row.productId)" style="color: var(--color-text-muted); font-size: 0.875rem;">已评价</span>
+                <el-button
+                  v-if="canAfterSale(order.status) && !hasAfterSale(row.id)"
+                  type="warning"
+                  link
+                  size="small"
+                  @click="applyAfterSale(row)"
+                >
+                  申请售后
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -62,15 +73,17 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api from '../api'
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
 const order = ref(null)
 const items = ref([])
 const productReviews = ref(new Set())
+const afterSaleItemIds = ref(new Set())
 const reviewVisible = ref(false)
 const reviewForm = reactive({ orderId: null, productId: null, rating: 5, content: '' })
 const reviewSubmitting = ref(false)
@@ -87,9 +100,21 @@ function statusType(s) {
 function canReview(status) {
   return status >= 1 && status <= 3
 }
+/** 已完成(3) 可申请售后 */
+function canAfterSale(status) {
+  return status === 3
+}
 
 function hasReview(productId) {
   return productReviews.value.has(productId)
+}
+
+function hasAfterSale(orderItemId) {
+  return afterSaleItemIds.value.has(orderItemId)
+}
+
+function applyAfterSale(row) {
+  router.push(`/after-sale/apply/${row.id}`)
 }
 
 function openReview(row) {
@@ -136,16 +161,23 @@ async function cancel() {
 async function load() {
   loading.value = true
   try {
-    const [oRes, iRes, rRes] = await Promise.all([
+    const [oRes, iRes, rRes, aRes] = await Promise.all([
       api.get(`/orders/${orderId.value}`),
       api.get(`/orders/${orderId.value}/items`),
       api.get('/reviews/me').catch(() => ({ data: { code: 401, data: [] } })),
+      api.get('/after-sale').catch(() => ({ data: { code: 401, data: [] } })),
     ])
     if (oRes.data.code === 200) order.value = oRes.data.data
     if (iRes.data.code === 200) items.value = iRes.data.data || []
     const myReviews = (rRes?.data?.code === 200 ? rRes.data.data : []) || []
     productReviews.value = new Set(
       myReviews.filter((r) => Number(r.orderId) === orderId.value).map((r) => r.productId)
+    )
+    const myAfterSales = (aRes?.data?.code === 200 ? aRes.data.data : []) || []
+    afterSaleItemIds.value = new Set(
+      myAfterSales
+        .filter((a) => Number(a.orderId) === orderId.value && a.status !== 2 && a.status !== 7)
+        .map((a) => a.orderItemId)
     )
   } finally {
     loading.value = false
@@ -180,5 +212,12 @@ onMounted(load)
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--color-border);
+}
+
+.col-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 </style>

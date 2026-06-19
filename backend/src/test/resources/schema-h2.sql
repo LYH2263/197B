@@ -84,3 +84,58 @@ CREATE TABLE IF NOT EXISTS review (
   content VARCHAR(512),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS after_sale (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  after_sale_no VARCHAR(32) NOT NULL,
+  user_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  order_item_id BIGINT NOT NULL,
+  product_id BIGINT NOT NULL,
+  product_name VARCHAR(128) NOT NULL,
+  product_image VARCHAR(256),
+  type TINYINT NOT NULL,
+  reason VARCHAR(128) NOT NULL,
+  description VARCHAR(512),
+  voucher_images VARCHAR(1024),
+  original_price DECIMAL(12,2) NOT NULL,
+  original_quantity INT NOT NULL,
+  original_total_amount DECIMAL(12,2) NOT NULL,
+  refund_amount DECIMAL(12,2),
+  status TINYINT NOT NULL DEFAULT 0,
+  reject_reason VARCHAR(256),
+  return_company VARCHAR(64),
+  return_tracking_no VARCHAR(64),
+  exchange_company VARCHAR(64),
+  exchange_tracking_no VARCHAR(64),
+  supplement_id BIGINT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_after_sale_no ON after_sale(after_sale_no);
+
+CREATE TABLE IF NOT EXISTS after_sale_log (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  after_sale_id BIGINT NOT NULL,
+  operator_id BIGINT,
+  operator_name VARCHAR(64),
+  operator_role VARCHAR(20),
+  action VARCHAR(64) NOT NULL,
+  status_from TINYINT,
+  status_to TINYINT,
+  remark VARCHAR(512),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS after_sale_supplement (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  supplement_no VARCHAR(32) NOT NULL,
+  after_sale_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  price_diff DECIMAL(12,2) NOT NULL,
+  status TINYINT NOT NULL DEFAULT 0,
+  paid_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_supplement_no ON after_sale_supplement(supplement_no);
