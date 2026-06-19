@@ -4,6 +4,8 @@
     <resultMap id="BaseResultMap" type="com.shop.entity.OrderMain">
         <id column="id" property="id"/>
         <result column="order_no" property="orderNo"/>
+        <result column="order_type" property="orderType"/>
+        <result column="seckill_session_id" property="seckillSessionId"/>
         <result column="user_id" property="userId"/>
         <result column="total_amount" property="totalAmount"/>
         <result column="discount_amount" property="discountAmount"/>
@@ -19,8 +21,8 @@
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO order_main (order_no, user_id, total_amount, discount_amount, coupon_id, points_discount, points_used, points_earned, status, receiver_name, receiver_phone, receiver_address)
-        VALUES (#{orderNo}, #{userId}, #{totalAmount}, #{discountAmount}, #{couponId}, #{pointsDiscount}, #{pointsUsed}, #{pointsEarned}, #{status}, #{receiverName}, #{receiverPhone}, #{receiverAddress})
+        INSERT INTO order_main (order_no, order_type, seckill_session_id, user_id, total_amount, discount_amount, coupon_id, points_discount, points_used, points_earned, status, receiver_name, receiver_phone, receiver_address)
+        VALUES (#{orderNo}, #{orderType}, #{seckillSessionId}, #{userId}, #{totalAmount}, #{discountAmount}, #{couponId}, #{pointsDiscount}, #{pointsUsed}, #{pointsEarned}, #{status}, #{receiverName}, #{receiverPhone}, #{receiverAddress})
     </insert>
     <select id="selectById" resultMap="BaseResultMap">
         SELECT * FROM order_main WHERE id = #{id}

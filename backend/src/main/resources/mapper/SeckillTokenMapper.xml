@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.SeckillTokenMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.SeckillToken">
+        <id column="id" property="id"/>
+        <result column="token" property="token"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="user_id" property="userId"/>
+        <result column="expire_at" property="expireAt"/>
+        <result column="used" property="used"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO seckill_token (token, session_id, user_id, expire_at, used)
+        VALUES (#{token}, #{sessionId}, #{userId}, #{expireAt}, #{used})
+    </insert>
+
+    <select id="selectByToken" resultMap="BaseResultMap">
+        SELECT * FROM seckill_token WHERE token = #{token}
+    </select>
+
+    <update id="markUsed">
+        UPDATE seckill_token SET used = 1 WHERE token = #{token} AND used = 0
+    </update>
+
+    <select id="countBySessionIdAndUserId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM seckill_token WHERE session_id = #{sessionId} AND user_id = #{userId}
+    </select>
+
+    <select id="countValidBySessionIdAndUserId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM seckill_token
+        WHERE session_id = #{sessionId}
+          AND user_id = #{userId}
+          AND expire_at &gt;= #{now}
+          AND used = 0
+    </select>
+
+    <delete id="deleteExpired">
+        DELETE FROM seckill_token WHERE expire_at &lt; #{now}
+    </delete>
+</mapper>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.SeckillSessionMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.SeckillSession">
+        <id column="id" property="id"/>
+        <result column="product_id" property="productId"/>
+        <result column="seckill_price" property="seckillPrice"/>
+        <result column="total_stock" property="totalStock"/>
+        <result column="sold_stock" property="soldStock"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="per_user_limit" property="perUserLimit"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO seckill_session (product_id, seckill_price, total_stock, sold_stock, start_time, end_time, per_user_limit, status)
+        VALUES (#{productId}, #{seckillPrice}, #{totalStock}, #{soldStock}, #{startTime}, #{endTime}, #{perUserLimit}, #{status})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM seckill_session WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM seckill_session ORDER BY start_time DESC
+    </select>
+
+    <select id="selectActiveSessions" resultMap="BaseResultMap">
+        SELECT * FROM seckill_session
+        WHERE status = 1
+          AND start_time &lt;= #{now}
+          AND end_time &gt;= #{now}
+        ORDER BY start_time ASC
+    </select>
+
+    <select id="selectUpcomingOrActive" resultMap="BaseResultMap">
+        SELECT * FROM seckill_session
+        WHERE status = 1
+          AND end_time &gt;= #{now}
+        ORDER BY start_time ASC
+    </select>
+
+    <update id="update">
+        UPDATE seckill_session
+        SET product_id = #{productId},
+            seckill_price = #{seckillPrice},
+            total_stock = #{totalStock},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            per_user_limit = #{perUserLimit},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE seckill_session SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="deductStock">
+        UPDATE seckill_session
+        SET sold_stock = sold_stock + #{quantity}
+        WHERE id = #{id}
+          AND (total_stock - sold_stock) &gt;= #{quantity}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM seckill_session WHERE id = #{id}
+    </delete>
+</mapper>

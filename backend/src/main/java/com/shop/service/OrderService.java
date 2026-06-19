@@ -3,14 +3,18 @@ package com.shop.service;
 import com.shop.dto.CouponCalculateRequest;
 import com.shop.dto.CouponCalculateResult;
 import com.shop.dto.OrderCreateRequest;
+import com.shop.dto.SeckillOrderCreateRequest;
 import com.shop.entity.CartItem;
 import com.shop.entity.OrderItem;
 import com.shop.entity.OrderMain;
 import com.shop.entity.Product;
+import com.shop.entity.SeckillSession;
+import com.shop.entity.SeckillToken;
 import com.shop.mapper.CartItemMapper;
 import com.shop.mapper.OrderItemMapper;
 import com.shop.mapper.OrderMainMapper;
 import com.shop.mapper.ProductMapper;
+import com.shop.mapper.SeckillSessionMapper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +42,8 @@ public class OrderService {
     private final ProductMapper productMapper;
     private final CouponService couponService;
     private final PointsLevelService pointsLevelService;
+    private final SeckillService seckillService;
+    private final SeckillSessionMapper seckillSessionMapper;
 
     @Transactional(rollbackFor = Exception.class)
     public OrderMain create(Long userId, OrderCreateRequest req) {
@@ -212,5 +218,87 @@ public class OrderService {
 
     public List<OrderMain> listAll() {
         return orderMainMapper.selectAll();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public OrderMain createSeckillOrder(Long userId, SeckillOrderCreateRequest req) {
+        SeckillToken token = seckillService.validateAndMarkToken(req.getToken(), req.getSessionId(), userId);
+
+        SeckillSession session = seckillSessionMapper.selectById(req.getSessionId());
+        if (session == null) {
+            throw new IllegalArgumentException("秒杀场次不存在");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(session.getStartTime())) {
+            throw new IllegalStateException("活动未开始");
+        }
+        if (now.isAfter(session.getEndTime())) {
+            throw new IllegalStateException("活动已结束");
+        }
+
+        int userBought = seckillService.getUserBoughtCount(req.getSessionId(), userId);
+        if (userBought >= session.getPerUserLimit()) {
+            throw new IllegalStateException("您已达到本场限购数量（" + session.getPerUserLimit() + " 件）");
+        }
+
+        int buyQuantity = 1;
+        int allowed = session.getPerUserLimit() - userBought;
+        if (buyQuantity > allowed) {
+            buyQuantity = allowed;
+        }
+        if (buyQuantity <= 0) {
+            throw new IllegalStateException("超出限购数量");
+        }
+
+        boolean stockDeducted = seckillService.deductStock(req.getSessionId(), buyQuantity);
+        if (!stockDeducted) {
+            throw new IllegalStateException("很抱歉，商品已售罄");
+        }
+
+        Product p = productMapper.selectById(session.getProductId());
+        if (p == null) {
+            throw new IllegalStateException("商品不存在");
+        }
+
+        if (p.getStock() < buyQuantity) {
+            throw new IllegalStateException("商品主库存不足");
+        }
+        productMapper.updateStock(p.getId(), buyQuantity);
+
+        BigDecimal seckillTotal = session.getSeckillPrice().multiply(BigDecimal.valueOf(buyQuantity));
+
+        String orderNo = "OS" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + String.format("%04d", SEQ.incrementAndGet() % 10000);
+        OrderMain order = new OrderMain();
+        order.setOrderNo(orderNo);
+        order.setOrderType("seckill");
+        order.setSeckillSessionId(req.getSessionId());
+        order.setUserId(userId);
+        order.setTotalAmount(seckillTotal);
+        order.setDiscountAmount(p.getPrice().multiply(BigDecimal.valueOf(buyQuantity)).subtract(seckillTotal));
+        order.setCouponId(null);
+        order.setPointsDiscount(BigDecimal.ZERO);
+        order.setPointsUsed(0);
+        order.setPointsEarned(0);
+        order.setStatus(0);
+        order.setReceiverName(req.getReceiverName());
+        order.setReceiverPhone(req.getReceiverPhone());
+        order.setReceiverAddress(req.getReceiverAddress());
+        orderMainMapper.insert(order);
+
+        OrderItem oi = new OrderItem();
+        oi.setOrderId(order.getId());
+        oi.setProductId(p.getId());
+        oi.setProductName(p.getName());
+        oi.setProductImage(p.getMainImage());
+        oi.setPrice(session.getSeckillPrice());
+        oi.setQuantity(buyQuantity);
+        oi.setTotalAmount(seckillTotal);
+        orderItemMapper.insert(oi);
+
+        log.info("Seckill order created: orderNo={}, sessionId={}, userId={}, quantity={}",
+                orderNo, req.getSessionId(), userId, buyQuantity);
+        return orderMainMapper.selectById(order.getId());
     }
 }

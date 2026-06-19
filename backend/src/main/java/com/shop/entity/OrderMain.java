@@ -13,6 +13,8 @@ public class OrderMain implements Serializable {
 
     private Long id;
     private String orderNo;
+    private String orderType;
+    private Long seckillSessionId;
     private Long userId;
     private BigDecimal totalAmount;
     private BigDecimal discountAmount;

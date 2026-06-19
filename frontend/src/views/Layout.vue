@@ -5,6 +5,9 @@
         <router-link to="/" class="logo">电商购物平台</router-link>
         <nav class="nav">
           <router-link to="/" class="nav-link">首页</router-link>
+          <router-link to="/seckill" class="nav-link nav-link--seckill">
+            <el-icon :size="14"><Lightning /></el-icon> 限时秒杀
+          </router-link>
           <router-link to="/products" class="nav-link">商品</router-link>
           <router-link to="/coupon-center" class="nav-link">领券中心</router-link>
           <router-link to="/points-mall" class="nav-link">积分商城</router-link>
@@ -29,6 +32,7 @@
               <router-link to="/admin/points" class="nav-link">积分等级</router-link>
               <router-link to="/admin/exchange" class="nav-link">兑换管理</router-link>
               <router-link to="/admin/coupons" class="nav-link">优惠券管理</router-link>
+              <router-link to="/admin/seckill" class="nav-link">秒杀管理</router-link>
               <router-link to="/admin/reviews" class="nav-link">评价管理</router-link>
               <router-link to="/admin/after-sale" class="nav-link">售后管理</router-link>
             </template>
@@ -75,7 +79,7 @@ import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import api from '../api'
-import { Loading, ArrowDown } from '@element-plus/icons-vue'
+import { Loading, ArrowDown, Lightning } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -173,6 +177,23 @@ function handleCommand(cmd) {
 .nav-link.router-link-active {
   color: var(--color-primary);
   background: var(--color-primary-light);
+}
+
+.nav-link--seckill {
+  color: #ef4444;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link--seckill:hover {
+  background: #fef2f2;
+  color: #dc2626 !important;
+}
+
+.nav-link--seckill.router-link-active {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
 }
 
 .nav-link--primary.router-link-active,

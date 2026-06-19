@@ -11,6 +11,23 @@
       </div>
     </section>
 
+    <section class="section seckill-banner" @click="$router.push('/seckill')">
+      <div class="seckill-banner-bg" />
+      <div class="seckill-banner-content">
+        <div class="seckill-banner-text">
+          <h2 class="seckill-title">
+            <el-icon :size="28"><Lightning /></el-icon>
+            限时秒杀
+          </h2>
+          <p class="seckill-subtitle">超值特价 · 数量有限 · 先到先得</p>
+        </div>
+        <el-button size="large" type="danger" class="seckill-banner-btn">
+          立即抢购
+          <el-icon><Right /></el-icon>
+        </el-button>
+      </div>
+    </section>
+
     <section class="section categories">
       <h2 class="section-title">商品分类</h2>
       <div v-loading="loading" class="category-list">
@@ -53,6 +70,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { Lightning, Right } from '@element-plus/icons-vue'
 import api from '../api'
 
 const loading = ref(true)
@@ -130,6 +148,71 @@ onMounted(async () => {
 .hero-cta:hover {
   background: rgba(255, 255, 255, 0.95) !important;
   color: var(--color-primary-hover) !important;
+}
+
+.seckill-banner {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 40px;
+  min-height: 120px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.seckill-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.seckill-banner-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #f97316 100%);
+}
+
+.seckill-banner-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 36px;
+  color: #fff;
+}
+
+.seckill-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.seckill-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.seckill-subtitle {
+  font-size: 0.9375rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.seckill-banner-btn {
+  font-weight: 600;
+  background: #fff !important;
+  color: #ef4444 !important;
+  border: none !important;
+}
+
+.seckill-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #dc2626 !important;
 }
 
 .section {

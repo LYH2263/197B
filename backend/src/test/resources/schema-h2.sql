@@ -53,6 +53,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_user_product ON cart_item(user_id, product_
 CREATE TABLE IF NOT EXISTS order_main (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   order_no VARCHAR(32) NOT NULL,
+  order_type VARCHAR(20) NOT NULL DEFAULT 'normal',
+  seckill_session_id BIGINT,
   user_id BIGINT NOT NULL,
   total_amount DECIMAL(12,2) NOT NULL,
   status TINYINT NOT NULL DEFAULT 0,
@@ -192,4 +194,29 @@ CREATE TABLE IF NOT EXISTS points_exchange_order (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uk_exchange_no ON points_exchange_order(exchange_no);
+
+CREATE TABLE IF NOT EXISTS seckill_session (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  product_id BIGINT NOT NULL,
+  seckill_price DECIMAL(12,2) NOT NULL,
+  total_stock INT NOT NULL,
+  sold_stock INT NOT NULL DEFAULT 0,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP NOT NULL,
+  per_user_limit INT NOT NULL DEFAULT 1,
+  status TINYINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS seckill_token (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  token VARCHAR(64) NOT NULL,
+  session_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  expire_at TIMESTAMP NOT NULL,
+  used TINYINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_seckill_token ON seckill_token(token);
 
