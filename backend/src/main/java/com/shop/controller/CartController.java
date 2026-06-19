@@ -2,6 +2,7 @@ package com.shop.controller;
 
 import com.shop.common.Result;
 import com.shop.dto.CartItemVO;
+import com.shop.dto.CartResultVO;
 import com.shop.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -31,6 +32,12 @@ public class CartController {
     public Result<List<CartItemVO>> list(Authentication auth) {
         Long userId = requireUserId(auth);
         return Result.ok(cartService.list(userId));
+    }
+
+    @GetMapping("/with-promotion")
+    public Result<CartResultVO> listWithPromotion(Authentication auth) {
+        Long userId = requireUserId(auth);
+        return Result.ok(cartService.listWithPromotion(userId));
     }
 
     @PostMapping("/add")

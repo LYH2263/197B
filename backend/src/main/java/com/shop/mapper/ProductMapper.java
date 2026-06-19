@@ -4,6 +4,7 @@ import com.shop.entity.Product;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -19,4 +20,10 @@ public interface ProductMapper {
     Product selectById(@Param("id") Long id);
 
     int updateStock(@Param("id") Long id, @Param("quantity") int quantity);
+
+    List<Product> selectRecommendForPromotion(@Param("categoryId") Long categoryId,
+                                              @Param("maxPrice") BigDecimal maxPrice,
+                                              @Param("excludeProductIds") List<Long> excludeProductIds,
+                                              @Param("status") Integer status,
+                                              @Param("limit") int limit);
 }

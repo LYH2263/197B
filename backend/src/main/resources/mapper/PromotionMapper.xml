@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.PromotionMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.Promotion">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="scope_type" property="scopeType"/>
+        <result column="applicable_category" property="applicableCategory"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.shop.entity.Promotion" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO promotion (name, start_time, end_time, scope_type, applicable_category, status)
+        VALUES (#{name}, #{startTime}, #{endTime}, #{scopeType}, #{applicableCategory}, #{status})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM promotion WHERE id = #{id}
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT * FROM promotion
+        <where>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE promotion SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="updateById" parameterType="com.shop.entity.Promotion">
+        UPDATE promotion
+        SET name = #{name},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            scope_type = #{scopeType},
+            applicable_category = #{applicableCategory},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectActive" resultMap="BaseResultMap">
+        SELECT * FROM promotion
+        WHERE status = 1
+          AND start_time &lt;= #{now}
+          AND end_time &gt;= #{now}
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectActiveByCategory" resultMap="BaseResultMap">
+        SELECT * FROM promotion
+        WHERE status = 1
+          AND start_time &lt;= #{now}
+          AND end_time &gt;= #{now}
+          AND (scope_type = 1 OR (scope_type = 2 AND applicable_category = #{categoryId}))
+        ORDER BY scope_type DESC, id DESC
+        LIMIT 1
+    </select>
+</mapper>

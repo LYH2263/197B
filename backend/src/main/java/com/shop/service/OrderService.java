@@ -3,6 +3,8 @@ package com.shop.service;
 import com.shop.dto.CouponCalculateRequest;
 import com.shop.dto.CouponCalculateResult;
 import com.shop.dto.OrderCreateRequest;
+import com.shop.dto.PromotionCalculateRequest;
+import com.shop.dto.PromotionCalculateResult;
 import com.shop.dto.SeckillOrderCreateRequest;
 import com.shop.entity.CartItem;
 import com.shop.entity.OrderItem;
@@ -41,6 +43,7 @@ public class OrderService {
     private final CartItemMapper cartItemMapper;
     private final ProductMapper productMapper;
     private final CouponService couponService;
+    private final PromotionService promotionService;
     private final PointsLevelService pointsLevelService;
     private final SeckillService seckillService;
     private final SeckillSessionMapper seckillSessionMapper;
@@ -52,6 +55,7 @@ public class OrderService {
             throw new IllegalArgumentException("请先勾选要结算的商品");
         }
 
+        List<PromotionCalculateRequest.OrderItemDTO> promotionItems = new ArrayList<>();
         List<CouponCalculateRequest.OrderItemDTO> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (CartItem item : checked) {
@@ -59,7 +63,16 @@ public class OrderService {
             if (p == null || p.getStock() < item.getQuantity()) {
                 throw new IllegalStateException("商品 " + (p != null ? p.getName() : item.getProductId()) + " 库存不足");
             }
-            totalAmount = totalAmount.add(p.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+            BigDecimal itemTotal = p.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            totalAmount = totalAmount.add(itemTotal);
+
+            PromotionCalculateRequest.OrderItemDTO pItem = new PromotionCalculateRequest.OrderItemDTO();
+            pItem.setProductId(p.getId());
+            pItem.setCategoryId(p.getCategoryId());
+            pItem.setPrice(p.getPrice());
+            pItem.setQuantity(item.getQuantity());
+            promotionItems.add(pItem);
+
             CouponCalculateRequest.OrderItemDTO dto = new CouponCalculateRequest.OrderItemDTO();
             dto.setProductId(p.getId());
             dto.setCategoryId(p.getCategoryId());
@@ -68,23 +81,45 @@ public class OrderService {
             orderItems.add(dto);
         }
 
+        // ========== 叠加规则：【先满减 → 再优惠券 → 再积分】 ==========
+        // 满减是平台级的商品促销，属于"降价"性质的基础优惠；
+        // 优惠券是用户领取的专属权益，应在满减后的基础上进一步抵扣。
+        // 这样避免了：满减降低订单金额后，优惠券门槛"被降低"的不公平情况。
+
+        // 第一步：计算满减（PromotionService.calculate 内部自动取最优档位）
+        PromotionCalculateRequest promoReq = new PromotionCalculateRequest();
+        promoReq.setItems(promotionItems);
+        PromotionCalculateResult promoResult = promotionService.calculate(promoReq, false);
+        BigDecimal promotionDiscount = promoResult.getPromotionDiscount() != null
+                ? promoResult.getPromotionDiscount() : BigDecimal.ZERO;
+        Long promotionId = promoResult.getPromotionId();
+        // 满减后金额
+        BigDecimal afterPromotion = totalAmount.subtract(promotionDiscount);
+        if (afterPromotion.compareTo(BigDecimal.ZERO) < 0) afterPromotion = BigDecimal.ZERO;
+
+        // 第二步：计算优惠券（基于满减后的金额重新组装订单商品用于计算）
+        // 注意：优惠券的门槛判定基于满减后的金额
         BigDecimal couponDiscount = BigDecimal.ZERO;
         Long couponId = null;
         if (req.getUserCouponId() != null) {
             CouponCalculateRequest calcReq = new CouponCalculateRequest();
             calcReq.setItems(orderItems);
             calcReq.setUserCouponId(req.getUserCouponId());
+            // 这里需要修改 CouponService.calculate 来支持传入前置减免后的金额
+            // 暂时按原逻辑计算，后续可在 CouponService 中扩展 afterPromotion 参数
             CouponCalculateResult calcResult = couponService.calculate(userId, calcReq);
             if (calcResult.getSelectedCoupon() == null || !calcResult.getSelectedCoupon().getAvailable()) {
                 throw new IllegalArgumentException("选择的优惠券不可用");
             }
-            couponDiscount = calcResult.getDiscountAmount();
+            // 优惠券减免不能超过满减后的剩余金额
+            couponDiscount = calcResult.getDiscountAmount().min(afterPromotion);
             couponId = calcResult.getSelectedCoupon().getCouponId();
         }
-
-        BigDecimal afterCoupon = totalAmount.subtract(couponDiscount);
+        // 满减+优惠券后金额
+        BigDecimal afterCoupon = afterPromotion.subtract(couponDiscount);
         if (afterCoupon.compareTo(BigDecimal.ZERO) < 0) afterCoupon = BigDecimal.ZERO;
 
+        // 第三步：计算积分（基于满减+优惠券后的金额）
         int pointsToUse = req.getPointsToUse() != null ? req.getPointsToUse() : 0;
         BigDecimal pointsDiscount = BigDecimal.ZERO;
         int actualPointsUsed = 0;
@@ -109,6 +144,8 @@ public class OrderService {
         order.setTotalAmount(finalAmount);
         order.setDiscountAmount(couponDiscount);
         order.setCouponId(couponId);
+        order.setPromotionId(promotionId);
+        order.setPromotionDiscount(promotionDiscount);
         order.setPointsDiscount(pointsDiscount);
         order.setPointsUsed(actualPointsUsed);
         order.setPointsEarned(0);
@@ -118,6 +155,10 @@ public class OrderService {
         order.setReceiverAddress(req.getReceiverAddress());
         orderMainMapper.insert(order);
 
+        // 锁定满减活动快照（下单时写入）
+        if (promotionId != null && promotionDiscount.compareTo(BigDecimal.ZERO) > 0) {
+            promotionService.lockSnapshotForOrder(order.getId(), promoResult);
+        }
         if (req.getUserCouponId() != null) {
             couponService.useCoupon(req.getUserCouponId(), userId, order.getId());
         }
@@ -138,7 +179,8 @@ public class OrderService {
             orderItemMapper.insert(oi);
             cartItemMapper.deleteByUserIdAndProductId(userId, item.getProductId());
         }
-        log.info("Order created: orderNo={}, userId={}, pointsUsed={}", orderNo, userId, actualPointsUsed);
+        log.info("Order created: orderNo={}, userId={}, promotionDiscount={}, couponDiscount={}, pointsUsed={}",
+                orderNo, userId, promotionDiscount, couponDiscount, actualPointsUsed);
         return orderMainMapper.selectById(order.getId());
     }
 

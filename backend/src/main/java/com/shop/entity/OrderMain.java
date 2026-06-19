@@ -19,6 +19,8 @@ public class OrderMain implements Serializable {
     private BigDecimal totalAmount;
     private BigDecimal discountAmount;
     private Long couponId;
+    private Long promotionId;
+    private BigDecimal promotionDiscount;
     private BigDecimal pointsDiscount;
     private Integer pointsUsed;
     private Integer pointsEarned;

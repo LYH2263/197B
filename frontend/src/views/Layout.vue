@@ -37,6 +37,7 @@
               <router-link to="/admin/points" class="nav-link">积分等级</router-link>
               <router-link to="/admin/exchange" class="nav-link">兑换管理</router-link>
               <router-link to="/admin/coupons" class="nav-link">优惠券管理</router-link>
+              <router-link to="/admin/promotions" class="nav-link">满减管理</router-link>
               <router-link to="/admin/seckill" class="nav-link">秒杀管理</router-link>
               <router-link to="/admin/reviews" class="nav-link">评价管理</router-link>
               <router-link to="/admin/after-sale" class="nav-link">售后管理</router-link>

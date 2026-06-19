@@ -26,6 +26,7 @@ const routes = [
       { path: 'admin/reviews', name: 'AdminReviews', component: () => import('../views/AdminReviews.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/after-sale', name: 'AdminAfterSale', component: () => import('../views/AdminAfterSale.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/coupons', name: 'AdminCoupons', component: () => import('../views/AdminCoupons.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+      { path: 'admin/promotions', name: 'AdminPromotions', component: () => import('../views/AdminPromotions.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/points', name: 'AdminPoints', component: () => import('../views/AdminPoints.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/exchange', name: 'AdminExchange', component: () => import('../views/AdminExchange.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/seckill', name: 'AdminSeckill', component: () => import('../views/AdminSeckill.vue'), meta: { requiresAuth: true, requiresAdmin: true } },

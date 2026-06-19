@@ -1,6 +1,9 @@
 package com.shop.service;
 
 import com.shop.dto.CartItemVO;
+import com.shop.dto.CartResultVO;
+import com.shop.dto.PromotionCalculateRequest;
+import com.shop.dto.PromotionCalculateResult;
 import com.shop.entity.CartItem;
 import com.shop.entity.Product;
 import com.shop.mapper.CartItemMapper;
@@ -26,6 +29,7 @@ public class CartService {
 
     private final CartItemMapper cartItemMapper;
     private final ProductMapper productMapper;
+    private final PromotionService promotionService;
 
     @Transactional(rollbackFor = Exception.class)
     public void add(Long userId, Long productId, int quantity) {
@@ -51,6 +55,39 @@ public class CartService {
         log.debug("Cart add: userId={}, productId={}, quantity={}", userId, productId, quantity);
     }
 
+    public CartResultVO listWithPromotion(Long userId) {
+        List<CartItemVO> items = list(userId);
+        CartResultVO result = new CartResultVO();
+        result.setItems(items);
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        int checkedCount = 0;
+        List<PromotionCalculateRequest.OrderItemDTO> promoItems = new ArrayList<>();
+        for (CartItemVO vo : items) {
+            if (vo.getChecked() == 1) {
+                totalAmount = totalAmount.add(vo.getTotalAmount());
+                checkedCount++;
+                PromotionCalculateRequest.OrderItemDTO dto = new PromotionCalculateRequest.OrderItemDTO();
+                dto.setProductId(vo.getProductId());
+                dto.setCategoryId(vo.getCategoryId());
+                dto.setPrice(vo.getPrice());
+                dto.setQuantity(vo.getQuantity());
+                promoItems.add(dto);
+            }
+        }
+        result.setTotalAmount(totalAmount);
+        result.setCheckedCount(checkedCount);
+
+        if (!promoItems.isEmpty()) {
+            PromotionCalculateRequest req = new PromotionCalculateRequest();
+            req.setItems(promoItems);
+            PromotionCalculateResult promoResult = promotionService.calculate(req);
+            result.setPromotion(promoResult);
+        }
+
+        return result;
+    }
+
     public List<CartItemVO> list(Long userId) {
         List<CartItem> items = cartItemMapper.selectByUserId(userId);
         List<CartItemVO> result = new ArrayList<>();
@@ -60,6 +97,7 @@ public class CartService {
             CartItemVO vo = new CartItemVO();
             vo.setId(item.getId());
             vo.setProductId(p.getId());
+            vo.setCategoryId(p.getCategoryId());
             vo.setProductName(p.getName());
             vo.setProductImage(p.getMainImage());
             vo.setPrice(p.getPrice());

@@ -29,4 +29,20 @@
     <update id="updateStock">
         UPDATE product SET stock = stock - #{quantity} WHERE id = #{id} AND stock >= #{quantity}
     </update>
+
+    <select id="selectRecommendForPromotion" resultMap="BaseResultMap">
+        SELECT * FROM product
+        WHERE status = #{status}
+          AND stock > 0
+          AND price &lt;= #{maxPrice}
+          <if test="categoryId != null">AND category_id = #{categoryId}</if>
+          <if test="excludeProductIds != null and excludeProductIds.size() > 0">
+              AND id NOT IN
+              <foreach collection="excludeProductIds" item="pid" open="(" separator="," close=")">
+                  #{pid}
+              </foreach>
+          </if>
+        ORDER BY price ASC, id ASC
+        LIMIT #{limit}
+    </select>
 </mapper>

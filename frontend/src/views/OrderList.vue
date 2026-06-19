@@ -15,6 +15,9 @@
         </div>
         <p class="order-amount">
           合计：<strong>¥ {{ order.totalAmount }}</strong>
+          <span v-if="order.promotionDiscount > 0" class="discount-amount discount-amount--promo">
+            (满减 ¥ {{ order.promotionDiscount }})
+          </span>
           <span v-if="order.discountAmount > 0" class="discount-amount">
             (券优惠 ¥ {{ order.discountAmount }})
           </span>
@@ -66,6 +69,33 @@
               <el-input v-model="checkoutForm.receiverAddress" type="textarea" placeholder="详细地址" :rows="2" />
             </el-form-item>
           </el-form>
+        </div>
+
+        <div class="checkout-section">
+          <div class="section-header">
+            <h4 class="section-title">满减活动</h4>
+          </div>
+          <div v-if="promotionCalcResult.promotionId" class="selected-promotion">
+            <div class="promotion-info">
+              <div class="promotion-tag-wrap">
+                <el-icon class="promo-icon" color="#f97316"><Present /></el-icon>
+              </div>
+              <div class="promotion-detail">
+                <div class="promotion-name">{{ promotionCalcResult.promotionName }}</div>
+                <div class="promotion-desc">{{ promotionCalcResult.desc || `满${promotionCalcResult.tierThreshold}减${promotionCalcResult.tierDiscount}${promotionCalcResult.categoryName ? '（限'+promotionCalcResult.categoryName+'）' : '（全场）'}` }}</div>
+              </div>
+            </div>
+            <span class="promo-saving">-¥{{ Number(promotionCalcResult.promotionDiscount).toFixed(2) }}</span>
+          </div>
+          <div v-else class="no-promotion">
+            <el-icon class="text-muted"><Present /></el-icon>
+            <span>当前购物车暂未参与满减活动</span>
+            <el-button type="primary" link @click="goCartForPromotion">去凑单</el-button>
+          </div>
+          <div v-if="promotionCalcResult.promotionId && promotionCalcResult.nextTierThreshold" class="promotion-next-hint">
+            <el-icon color="#b45309"><TrendCharts /></el-icon>
+            再买 <strong class="gap-highlight">¥{{ Number(promotionCalcResult.gapToNextTier).toFixed(2) }}</strong> 可享满{{ promotionCalcResult.nextTierThreshold }}减{{ promotionCalcResult.nextTierDiscount }}
+          </div>
         </div>
 
         <div class="checkout-section">
@@ -153,6 +183,10 @@
             <span class="label">商品金额</span>
             <span class="value">¥ {{ displayOriginalAmount.toFixed(2) }}</span>
           </div>
+          <div v-if="promotionCalcResult.promotionDiscount > 0" class="price-row price-row--discount price-row--promo">
+            <span class="label">满减抵扣</span>
+            <span class="value">-¥ {{ Number(promotionCalcResult.promotionDiscount).toFixed(2) }}</span>
+          </div>
           <div v-if="couponCalcResult.discountAmount > 0" class="price-row price-row--discount">
             <span class="label">优惠券抵扣</span>
             <span class="value">-¥ {{ Number(couponCalcResult.discountAmount).toFixed(2) }}</span>
@@ -219,13 +253,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Ticket } from '@element-plus/icons-vue'
+import { Ticket, Present, TrendCharts } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(true)
 const orders = ref([])
@@ -254,6 +289,26 @@ const couponCalcResult = reactive({
   unavailableCoupons: []
 })
 
+const promotionCalcResult = reactive({
+  promotionId: null,
+  promotionName: '',
+  tierId: null,
+  tierThreshold: 0,
+  tierDiscount: 0,
+  promotionDiscount: 0,
+  applicableAmount: 0,
+  originalAmount: 0,
+  scopeType: 1,
+  applicableCategory: null,
+  categoryName: '',
+  desc: '',
+  nextTierThreshold: 0,
+  nextTierDiscount: 0,
+  gapToNextTier: 0,
+  nextTierDesc: '',
+  recommendProducts: []
+})
+
 const pointsCalcResult = reactive({
   availablePoints: 0,
   maxPointsUsable: 0,
@@ -274,9 +329,12 @@ const pointsDeductAmount = computed(() => {
 })
 
 const displayFinalAmount = computed(() => {
+  // 叠加规则：先满减 → 再优惠券 → 再积分
   const original = displayOriginalAmount.value
+  const promoDisc = Number(promotionCalcResult.promotionDiscount) || 0
+  const afterPromo = Math.max(0, original - promoDisc)
   const couponDisc = Number(couponCalcResult.discountAmount) || 0
-  const afterCoupon = Math.max(0, original - couponDisc)
+  const afterCoupon = Math.max(0, afterPromo - couponDisc)
   const pointsDisc = pointsDeductAmount.value
   return Math.max(0, afterCoupon - pointsDisc)
 })
@@ -316,13 +374,28 @@ async function recalcAll() {
       return
     }
 
+    const calcItems = items.map(i => ({
+      productId: i.productId,
+      categoryId: i.categoryId,
+      price: i.price,
+      quantity: i.quantity
+    }))
+
+    // 第一步：计算满减（PromotionService内部自动取最优档位）
+    // 叠加规则：先满减 → 再优惠券 → 再积分
+    try {
+      const promoRes = await api.post('/promotions/calculate-no-recommend', { items: calcItems })
+      if (promoRes.data.code === 200 && promoRes.data.data) {
+        Object.assign(promotionCalcResult, promoRes.data.data)
+      }
+    } catch {
+      // 满减计算失败不影响其他计算
+    }
+
+    const promoDisc = Number(promotionCalcResult.promotionDiscount) || 0
+
     const couponReq = {
-      items: items.map(i => ({
-        productId: i.productId,
-        categoryId: i.categoryId,
-        price: i.price,
-        quantity: i.quantity
-      })),
+      items: calcItems,
       userCouponId: checkoutForm.userCouponId
     }
     const couponRes = await api.post('/coupons/calculate', couponReq)
@@ -336,10 +409,15 @@ async function recalcAll() {
 
     const original = Number(couponCalcResult.originalAmount) || 0
     const couponDisc = Number(couponCalcResult.discountAmount) || 0
-    const afterCoupon = Math.max(0, original - couponDisc)
+    // 优惠券金额不能超过满减后的剩余金额
+    const adjustedCouponDisc = Math.min(couponDisc, Math.max(0, original - promoDisc))
+    couponCalcResult.discountAmount = adjustedCouponDisc
+
+    const afterPromo = Math.max(0, original - promoDisc)
+    const afterPromoAndCoupon = Math.max(0, afterPromo - adjustedCouponDisc)
 
     try {
-      const pointsRes = await api.get('/points/calculate', { params: { amount: afterCoupon } })
+      const pointsRes = await api.get('/points/calculate', { params: { amount: afterPromoAndCoupon } })
       if (pointsRes.data.code === 200) {
         Object.assign(pointsCalcResult, pointsRes.data.data)
         if (usePoints.value) {
@@ -352,6 +430,11 @@ async function recalcAll() {
   } finally {
     calculating.value = false
   }
+}
+
+function goCartForPromotion() {
+  showCheckout.value = false
+  router.push('/cart')
 }
 
 watch(usePoints, (v) => {
@@ -815,6 +898,92 @@ onMounted(load)
 .coupon-option-right .coupon-expire {
   font-size: 0.75rem;
   color: var(--color-text-muted);
+}
+
+.discount-amount--promo {
+  color: #ea580c !important;
+}
+
+.selected-promotion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fff1f2 100%);
+  border-radius: var(--radius-sm);
+  border: 1px solid #fed7aa;
+}
+
+.promotion-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.promotion-tag-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.promo-icon {
+  font-size: 20px;
+}
+
+.promotion-detail .promotion-name {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.promotion-detail .promotion-desc {
+  font-size: 0.8125rem;
+  color: #9a3412;
+}
+
+.promo-saving {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.no-promotion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.promotion-next-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  margin-left: 4px;
+  padding: 6px 12px;
+  background: #fffbeb;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  color: #b45309;
+}
+
+.gap-highlight {
+  color: #ef4444;
+  font-size: 1rem;
+  margin: 0 2px;
+}
+
+.price-row--promo .value {
+  color: #ea580c !important;
 }
 
 .text-muted {

@@ -2,22 +2,18 @@ package com.shop.dto;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
-/**
- * 购物车项展示 DTO（含商品信息）
- */
 @Data
-public class CartItemVO {
+public class PromotionRecommendProductVO implements Serializable {
 
-    private Long id;
+    private static final long serialVersionUID = 1L;
+
     private Long productId;
-    private Long categoryId;
     private String productName;
     private String productImage;
     private BigDecimal price;
     private Integer stock;
-    private Integer quantity;
-    private Integer checked;
-    private BigDecimal totalAmount;
+    private Long categoryId;
 }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.OrderPromotionSnapshotMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.OrderPromotionSnapshot">
+        <id column="id" property="id"/>
+        <result column="order_id" property="orderId"/>
+        <result column="promotion_id" property="promotionId"/>
+        <result column="promotion_name" property="promotionName"/>
+        <result column="tier_id" property="tierId"/>
+        <result column="tier_threshold" property="tierThreshold"/>
+        <result column="tier_discount" property="tierDiscount"/>
+        <result column="promotion_discount" property="promotionDiscount"/>
+        <result column="scope_type" property="scopeType"/>
+        <result column="applicable_category" property="applicableCategory"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.shop.entity.OrderPromotionSnapshot" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_promotion_snapshot (order_id, promotion_id, promotion_name, tier_id,
+                                              tier_threshold, tier_discount, promotion_discount,
+                                              scope_type, applicable_category)
+        VALUES (#{orderId}, #{promotionId}, #{promotionName}, #{tierId},
+                #{tierThreshold}, #{tierDiscount}, #{promotionDiscount},
+                #{scopeType}, #{applicableCategory})
+    </insert>
+
+    <select id="selectByOrderId" resultMap="BaseResultMap">
+        SELECT * FROM order_promotion_snapshot WHERE order_id = #{orderId}
+    </select>
+</mapper>
