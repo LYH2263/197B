@@ -29,6 +29,7 @@ const routes = [
       { path: 'admin/points', name: 'AdminPoints', component: () => import('../views/AdminPoints.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/exchange', name: 'AdminExchange', component: () => import('../views/AdminExchange.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'admin/seckill', name: 'AdminSeckill', component: () => import('../views/AdminSeckill.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+      { path: 'admin/shipments', name: 'AdminShipments', component: () => import('../views/AdminShipments.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
     ],
   },
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },

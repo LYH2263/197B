@@ -13,7 +13,95 @@
         <p v-if="order.pointsDiscount > 0"><strong>积分抵扣：</strong>-¥ {{ order.pointsDiscount }}（使用 {{ order.pointsUsed }} 积分）</p>
         <p v-if="order.pointsEarned > 0"><strong>获得积分：</strong>+{{ order.pointsEarned }} 积分</p>
         <p><strong>下单时间：</strong>{{ order.createdAt }}</p>
+      </div>
+
+      <div v-if="shipmentInfo" class="shipment-card content-card">
+        <div class="shipment-header">
+          <div>
+            <h4 style="margin: 0 0 8px 0;">物流信息</h4>
+            <p class="shipment-company">
+              <strong>{{ shipmentInfo.shipment.expressCompanyName }}</strong>
+              <span class="tracking-no">运单号：{{ shipmentInfo.shipment.trackingNo }}</span>
+            </p>
+            <p v-if="shipmentInfo.shipment.shippedAt" class="shipment-time">
+              发货时间：{{ formatTime(shipmentInfo.shipment.shippedAt) }}
+            </p>
+          </div>
+          <div class="shipment-actions">
+            <el-button
+              v-if="shipmentInfo.canUrgeToday"
+              type="warning"
+              :loading="urging"
+              @click="urgeDelivery"
+            >
+              催物流
+            </el-button>
+            <el-tooltip v-else-if="order.status >= 2 && order.status < 3" content="今日已催单，请耐心等待" placement="top">
+              <el-button type="warning" disabled>催物流</el-button>
+            </el-tooltip>
+            <el-button
+              v-if="shipmentInfo.canReportIssue"
+              type="danger"
+              @click="openIssueDialog"
+            >
+              异常签收
+            </el-button>
+          </div>
+        </div>
+
         <el-divider />
+
+        <div class="timeline-section">
+          <h5 style="margin: 0 0 16px 0;">物流轨迹</h5>
+          <el-timeline>
+            <el-timeline-item
+              v-for="(trace, idx) in shipmentInfo.traces"
+              :key="trace.id || idx"
+              :timestamp="formatTime(trace.traceTime)"
+              :type="idx === 0 ? 'primary' : ''"
+              :hollow="idx !== 0"
+              placement="top"
+            >
+              <div class="trace-item">
+                <div class="trace-status" :class="'status-' + trace.status">
+                  {{ traceStatusText(trace.status) }}
+                </div>
+                <div class="trace-desc">{{ trace.description }}</div>
+                <div v-if="trace.location" class="trace-location">
+                  <el-icon><Location /></el-icon> {{ trace.location }}
+                </div>
+                <div v-if="trace.operator" class="trace-operator">
+                  快递员：{{ trace.operator }}
+                  <span v-if="trace.operatorPhone">（{{ trace.operatorPhone }}）</span>
+                </div>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+
+        <div v-if="shipmentInfo.urges && shipmentInfo.urges.length > 0" class="urge-section">
+          <el-divider />
+          <h5 style="margin: 0 0 12px 0;">催单记录</h5>
+          <el-table :data="shipmentInfo.urges" size="small" style="width: 100%">
+            <el-table-column prop="urgeDate" label="催单日期" width="140" />
+            <el-table-column prop="remark" label="备注" />
+            <el-table-column label="处理状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.handled === 1 ? 'success' : 'warning'" size="small">
+                  {{ row.handled === 1 ? '已处理' : '待处理' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="处理时间" width="180">
+              <template #default="{ row }">
+                {{ row.handledAt ? formatTime(row.handledAt) : '-' }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+
+      <div class="main-card content-card" style="margin-top: 24px;">
         <h4>商品明细</h4>
         <el-table :data="items" style="width: 100%">
           <el-table-column prop="productName" label="商品" />
@@ -60,6 +148,7 @@
           </template>
         </div>
       </div>
+
       <el-dialog v-model="reviewVisible" title="商品评价" width="400px" @close="reviewForm = {}">
         <el-form :model="reviewForm" label-width="80px">
           <el-form-item label="评分" required>
@@ -74,6 +163,53 @@
           <el-button type="primary" :loading="reviewSubmitting" @click="submitReview">提交</el-button>
         </template>
       </el-dialog>
+
+      <el-dialog v-model="issueVisible" title="异常签收反馈" width="500px" @close="resetIssueForm">
+        <el-form :model="issueForm" label-width="100px" ref="issueFormRef" :rules="issueRules">
+          <el-form-item label="问题类型" prop="issueType">
+            <el-select v-model="issueForm.issueType" placeholder="请选择问题类型" style="width: 100%">
+              <el-option label="商品破损" value="damaged" />
+              <el-option label="错发商品" value="wrong" />
+              <el-option label="丢件/少件" value="missing" />
+              <el-option label="其他问题" value="other" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="问题描述" prop="description">
+            <el-input
+              v-model="issueForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请详细描述遇到的问题..."
+              maxlength="500"
+              show-word-limit
+            />
+          </el-form-item>
+          <el-form-item label="照片凭证">
+            <el-upload
+              v-model:file-list="issueForm.fileList"
+              action="#"
+              list-type="picture-card"
+              :auto-upload="false"
+              :on-preview="handlePreview"
+              :limit="6"
+              accept="image/*"
+            >
+              <el-icon><Plus /></el-icon>
+            </el-upload>
+            <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 4px;">
+              最多上传6张图片，支持 jpg/png 格式
+            </div>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="issueVisible = false">取消</el-button>
+          <el-button type="primary" :loading="issueSubmitting" @click="submitIssue">提交</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog v-model="previewVisible" title="图片预览" width="600px">
+        <img :src="previewUrl" style="width: 100%; height: auto; display: block;" />
+      </el-dialog>
     </template>
     <el-empty v-else-if="!loading" description="订单不存在" />
   </div>
@@ -83,6 +219,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Location, Plus } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
 
@@ -98,6 +235,26 @@ const reviewVisible = ref(false)
 const reviewForm = reactive({ orderId: null, productId: null, rating: 5, content: '' })
 const reviewSubmitting = ref(false)
 
+const shipmentInfo = ref(null)
+const urging = ref(false)
+
+const issueVisible = ref(false)
+const issueFormRef = ref(null)
+const issueForm = reactive({
+  shipmentId: null,
+  issueType: '',
+  description: '',
+  fileList: [],
+})
+const issueRules = {
+  issueType: [{ required: true, message: '请选择问题类型', trigger: 'change' }],
+  description: [{ required: true, message: '请描述问题', trigger: 'blur' }],
+}
+const issueSubmitting = ref(false)
+
+const previewVisible = ref(false)
+const previewUrl = ref('')
+
 const orderId = computed(() => Number(route.params.id))
 
 function statusText(s) {
@@ -111,6 +268,10 @@ function canReview(status) {
 }
 function canAfterSale(status) {
   return status === 3
+}
+
+function traceStatusText(s) {
+  return { 0: '已发货', 1: '已揽收', 2: '运输中', 3: '派送中', 4: '已签收', 5: '异常签收' }[s] || '未知'
 }
 
 function hasReview(productId) {
@@ -178,6 +339,92 @@ async function cancel() {
   } catch (e) {}
 }
 
+async function urgeDelivery() {
+  if (!shipmentInfo.value) return
+  try {
+    urging.value = true
+    await api.post('/shipments/urge', {
+      shipmentId: shipmentInfo.value.shipment.id,
+      remark: '',
+    })
+    ElMessage.success('催单成功，请耐心等待处理')
+    loadShipment()
+  } finally {
+    urging.value = false
+  }
+}
+
+function openIssueDialog() {
+  if (!shipmentInfo.value) return
+  issueForm.shipmentId = shipmentInfo.value.shipment.id
+  issueForm.issueType = ''
+  issueForm.description = ''
+  issueForm.fileList = []
+  issueVisible.value = true
+}
+
+function resetIssueForm() {
+  issueForm.shipmentId = null
+  issueForm.issueType = ''
+  issueForm.description = ''
+  issueForm.fileList = []
+}
+
+function handlePreview(file) {
+  previewUrl.value = file.url
+  previewVisible.value = true
+}
+
+async function submitIssue() {
+  if (!issueFormRef.value) return
+  await issueFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    issueSubmitting.value = true
+    try {
+      const photoUrls = issueForm.fileList
+        .map((f) => f.url)
+        .filter(Boolean)
+        .join(',')
+      await api.post('/shipments/issue', {
+        shipmentId: issueForm.shipmentId,
+        issueType: issueForm.issueType,
+        description: issueForm.description,
+        photos: photoUrls,
+      })
+      ElMessage.success('已提交异常签收，管理员将尽快处理')
+      issueVisible.value = false
+      loadShipment()
+    } finally {
+      issueSubmitting.value = false
+    }
+  })
+}
+
+function formatTime(t) {
+  if (!t) return ''
+  const d = new Date(t)
+  if (isNaN(d.getTime())) return t
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+async function loadShipment() {
+  if (!order.value || order.value.status < 2) {
+    shipmentInfo.value = null
+    return
+  }
+  try {
+    const res = await api.get(`/shipments/order/${orderId.value}`)
+    if (res.data.code === 200) {
+      shipmentInfo.value = res.data.data
+    } else {
+      shipmentInfo.value = null
+    }
+  } catch (e) {
+    shipmentInfo.value = null
+  }
+}
+
 async function load() {
   loading.value = true
   try {
@@ -199,6 +446,7 @@ async function load() {
         .filter((a) => Number(a.orderId) === orderId.value && a.status !== 2 && a.status !== 7)
         .map((a) => a.orderItemId)
     )
+    await loadShipment()
   } finally {
     loading.value = false
   }
@@ -239,5 +487,110 @@ onMounted(load)
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+}
+
+.shipment-card {
+  max-width: 800px;
+  padding: 28px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, #f8faff 0%, #fff 100%);
+  border-left: 4px solid var(--el-color-primary);
+}
+
+.shipment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.shipment-company {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.tracking-no {
+  margin-left: 16px;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+.shipment-time {
+  margin: 4px 0 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.shipment-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.timeline-section {
+  padding-top: 4px;
+}
+
+.trace-item {
+  line-height: 1.6;
+}
+
+.trace-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.trace-status.status-0 {
+  background: #e6f4ff;
+  color: #1677ff;
+}
+.trace-status.status-1 {
+  background: #e6fffb;
+  color: #13c2c2;
+}
+.trace-status.status-2 {
+  background: #f0f5ff;
+  color: #2f54eb;
+}
+.trace-status.status-3 {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+.trace-status.status-4 {
+  background: #f6ffed;
+  color: #52c41a;
+}
+.trace-status.status-5 {
+  background: #fff1f0;
+  color: #f5222d;
+}
+
+.trace-desc {
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+
+.trace-location {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trace-operator {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.urge-section {
+  padding-top: 4px;
 }
 </style>

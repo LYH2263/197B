@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.ShipmentMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.Shipment">
+        <id column="id" property="id"/>
+        <result column="order_id" property="orderId"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="express_company_code" property="expressCompanyCode"/>
+        <result column="express_company_name" property="expressCompanyName"/>
+        <result column="tracking_no" property="trackingNo"/>
+        <result column="status" property="status"/>
+        <result column="shipped_at" property="shippedAt"/>
+        <result column="signed_at" property="signedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO shipment (order_id, order_no, express_company_code, express_company_name, tracking_no, status, shipped_at, signed_at)
+        VALUES (#{orderId}, #{orderNo}, #{expressCompanyCode}, #{expressCompanyName}, #{trackingNo}, #{status}, #{shippedAt}, #{signedAt})
+    </insert>
+    <update id="updateById">
+        UPDATE shipment SET
+            express_company_code = #{expressCompanyCode},
+            express_company_name = #{expressCompanyName},
+            tracking_no = #{trackingNo},
+            status = #{status},
+            shipped_at = #{shippedAt},
+            signed_at = #{signedAt}
+        WHERE id = #{id}
+    </update>
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM shipment WHERE id = #{id}
+    </select>
+    <select id="selectByOrderId" resultMap="BaseResultMap">
+        SELECT * FROM shipment WHERE order_id = #{orderId}
+    </select>
+    <select id="selectByTrackingNo" resultMap="BaseResultMap">
+        SELECT * FROM shipment WHERE tracking_no = #{trackingNo}
+    </select>
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM shipment ORDER BY id DESC
+    </select>
+    <update id="updateStatus">
+        UPDATE shipment SET status = #{status} WHERE id = #{id}
+    </update>
+</mapper>

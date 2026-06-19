@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.ShipmentTraceMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.ShipmentTrace">
+        <id column="id" property="id"/>
+        <result column="shipment_id" property="shipmentId"/>
+        <result column="status" property="status"/>
+        <result column="location" property="location"/>
+        <result column="description" property="description"/>
+        <result column="operator" property="operator"/>
+        <result column="operator_phone" property="operatorPhone"/>
+        <result column="trace_time" property="traceTime"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO shipment_trace (shipment_id, status, location, description, operator, operator_phone, trace_time)
+        VALUES (#{shipmentId}, #{status}, #{location}, #{description}, #{operator}, #{operatorPhone}, #{traceTime})
+    </insert>
+    <select id="selectByShipmentId" resultMap="BaseResultMap">
+        SELECT * FROM shipment_trace WHERE shipment_id = #{shipmentId} ORDER BY trace_time DESC, id DESC
+    </select>
+    <delete id="deleteByShipmentId">
+        DELETE FROM shipment_trace WHERE shipment_id = #{shipmentId}
+    </delete>
+</mapper>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.DeliveryIssueMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.DeliveryIssue">
+        <id column="id" property="id"/>
+        <result column="shipment_id" property="shipmentId"/>
+        <result column="order_id" property="orderId"/>
+        <result column="user_id" property="userId"/>
+        <result column="issue_type" property="issueType"/>
+        <result column="description" property="description"/>
+        <result column="photos" property="photos"/>
+        <result column="status" property="status"/>
+        <result column="admin_id" property="adminId"/>
+        <result column="admin_remark" property="adminRemark"/>
+        <result column="handled_at" property="handledAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO delivery_issue (shipment_id, order_id, user_id, issue_type, description, photos, status, admin_id, admin_remark, handled_at)
+        VALUES (#{shipmentId}, #{orderId}, #{userId}, #{issueType}, #{description}, #{photos}, #{status}, #{adminId}, #{adminRemark}, #{handledAt})
+    </insert>
+    <update id="updateById">
+        UPDATE delivery_issue SET
+            issue_type = #{issueType},
+            description = #{description},
+            photos = #{photos},
+            status = #{status},
+            admin_id = #{adminId},
+            admin_remark = #{adminRemark},
+            handled_at = #{handledAt}
+        WHERE id = #{id}
+    </update>
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM delivery_issue WHERE id = #{id}
+    </select>
+    <select id="selectByShipmentId" resultMap="BaseResultMap">
+        SELECT * FROM delivery_issue WHERE shipment_id = #{shipmentId} ORDER BY id DESC
+    </select>
+    <select id="selectByOrderId" resultMap="BaseResultMap">
+        SELECT * FROM delivery_issue WHERE order_id = #{orderId} ORDER BY id DESC
+    </select>
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM delivery_issue
+        <where>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        ORDER BY id DESC
+    </select>
+    <update id="updateStatus">
+        UPDATE delivery_issue SET status = #{status}, admin_id = #{adminId}, admin_remark = #{adminRemark}, handled_at = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

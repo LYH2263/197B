@@ -1,17 +1,14 @@
 package com.shop.controller;
 
 import com.shop.common.Result;
-import com.shop.dto.AdminLevelAdjustRequest;
-import com.shop.dto.AdminPointsAdjustRequest;
-import com.shop.dto.AfterSaleDetailVO;
-import com.shop.dto.AfterSaleReviewRequest;
-import com.shop.dto.AfterSaleShipRequest;
-import com.shop.dto.ReviewVO;
-import com.shop.dto.UserVO;
+import com.shop.dto.*;
 import com.shop.entity.AfterSale;
+import com.shop.entity.DeliveryIssue;
+import com.shop.entity.DeliveryUrge;
 import com.shop.entity.OrderMain;
 import com.shop.entity.PointsExchangeOrder;
 import com.shop.entity.PointsProduct;
+import com.shop.entity.Shipment;
 import com.shop.entity.User;
 import com.shop.mapper.UserMapper;
 import com.shop.service.AdminService;
@@ -19,6 +16,7 @@ import com.shop.service.AfterSaleService;
 import com.shop.service.OrderService;
 import com.shop.service.PointsExchangeService;
 import com.shop.service.PointsLevelService;
+import com.shop.service.ShipmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +36,7 @@ public class AdminController {
     private final OrderService orderService;
     private final PointsLevelService pointsLevelService;
     private final PointsExchangeService pointsExchangeService;
+    private final ShipmentService shipmentService;
 
     private String getAdminName(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof Long)) return "管理员";
@@ -100,9 +99,59 @@ public class AdminController {
         return Result.ok(orderService.listAll());
     }
 
+    @GetMapping("/express-companies")
+    public Result<List<ExpressCompanyVO>> listExpressCompanies() {
+        return Result.ok(shipmentService.listExpressCompanies());
+    }
+
     @PostMapping("/orders/{id}/ship")
-    public Result<Void> shipOrder(@PathVariable Long id) {
-        orderService.ship(id);
+    public Result<Shipment> shipOrder(@PathVariable Long id, @Valid @RequestBody ShipmentCreateRequest req) {
+        req.setOrderId(id);
+        Shipment shipment = shipmentService.createShipment(req);
+        return Result.ok(shipment);
+    }
+
+    @GetMapping("/shipments")
+    public Result<List<Shipment>> listShipments() {
+        return Result.ok(shipmentService.listAllShipments());
+    }
+
+    @GetMapping("/shipments/{id}")
+    public Result<ShipmentDetailVO> getShipmentDetail(@PathVariable Long id) {
+        ShipmentDetailVO vo = shipmentService.getAdminShipmentDetail(id);
+        if (vo == null) return Result.fail(404, "物流不存在");
+        return Result.ok(vo);
+    }
+
+    @GetMapping("/delivery-urges")
+    public Result<List<DeliveryUrge>> listDeliveryUrges(@RequestParam(required = false) Integer handled) {
+        return Result.ok(shipmentService.listAllUrges(handled));
+    }
+
+    @PostMapping("/delivery-urges/{id}/handle")
+    public Result<Void> handleUrge(Authentication auth, @PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        Long adminId = getAdminId(auth);
+        String remark = body != null && body.get("remark") != null ? String.valueOf(body.get("remark")) : null;
+        shipmentService.handleUrge(id, adminId, remark);
+        return Result.ok();
+    }
+
+    @GetMapping("/delivery-issues")
+    public Result<List<DeliveryIssue>> listDeliveryIssues(@RequestParam(required = false) Integer status) {
+        return Result.ok(shipmentService.listAllDeliveryIssues(status));
+    }
+
+    @GetMapping("/delivery-issues/{id}")
+    public Result<DeliveryIssue> getDeliveryIssue(@PathVariable Long id) {
+        DeliveryIssue issue = shipmentService.getDeliveryIssueById(id);
+        if (issue == null) return Result.fail(404, "异常记录不存在");
+        return Result.ok(issue);
+    }
+
+    @PostMapping("/delivery-issues/{id}/handle")
+    public Result<Void> handleDeliveryIssue(Authentication auth, @PathVariable Long id, @RequestBody DeliveryIssueHandleRequest req) {
+        Long adminId = getAdminId(auth);
+        shipmentService.handleDeliveryIssue(id, req, adminId);
         return Result.ok();
     }
 

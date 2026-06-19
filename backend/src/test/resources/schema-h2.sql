@@ -252,3 +252,63 @@ CREATE TABLE IF NOT EXISTS price_alert (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uk_alert_user_prod_status ON price_alert(user_id, product_id, status);
 
+CREATE TABLE IF NOT EXISTS shipment (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT NOT NULL,
+  order_no VARCHAR(32) NOT NULL,
+  express_company_code VARCHAR(32) NOT NULL,
+  express_company_name VARCHAR(64) NOT NULL,
+  tracking_no VARCHAR(64) NOT NULL,
+  status TINYINT NOT NULL DEFAULT 0,
+  shipped_at TIMESTAMP NOT NULL,
+  signed_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_shipment_order_id ON shipment(order_id);
+
+CREATE TABLE IF NOT EXISTS shipment_trace (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  shipment_id BIGINT NOT NULL,
+  status TINYINT NOT NULL,
+  location VARCHAR(256),
+  description VARCHAR(512) NOT NULL,
+  operator VARCHAR(128),
+  operator_phone VARCHAR(20),
+  trace_time TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_trace_shipment_id ON shipment_trace(shipment_id);
+
+CREATE TABLE IF NOT EXISTS delivery_urge (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  shipment_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  urge_date DATE NOT NULL,
+  remark VARCHAR(256),
+  handled TINYINT NOT NULL DEFAULT 0,
+  admin_id BIGINT,
+  admin_remark VARCHAR(256),
+  handled_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_urge_shipment_date ON delivery_urge(shipment_id, urge_date);
+
+CREATE TABLE IF NOT EXISTS delivery_issue (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  shipment_id BIGINT NOT NULL,
+  order_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  issue_type VARCHAR(32) NOT NULL,
+  description VARCHAR(1024) NOT NULL,
+  photos VARCHAR(1024),
+  status TINYINT NOT NULL DEFAULT 0,
+  admin_id BIGINT,
+  admin_remark VARCHAR(512),
+  handled_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_issue_shipment_id ON delivery_issue(shipment_id);
+

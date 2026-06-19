@@ -33,6 +33,7 @@
             <router-link to="/my-reviews" class="nav-link">我的评价</router-link>
             <template v-if="userStore.isAdmin">
               <router-link to="/admin/users" class="nav-link">用户管理</router-link>
+              <router-link to="/admin/shipments" class="nav-link">物流管理</router-link>
               <router-link to="/admin/points" class="nav-link">积分等级</router-link>
               <router-link to="/admin/exchange" class="nav-link">兑换管理</router-link>
               <router-link to="/admin/coupons" class="nav-link">优惠券管理</router-link>
