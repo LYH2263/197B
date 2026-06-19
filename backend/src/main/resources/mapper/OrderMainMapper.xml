@@ -6,6 +6,8 @@
         <result column="order_no" property="orderNo"/>
         <result column="user_id" property="userId"/>
         <result column="total_amount" property="totalAmount"/>
+        <result column="discount_amount" property="discountAmount"/>
+        <result column="coupon_id" property="couponId"/>
         <result column="status" property="status"/>
         <result column="receiver_name" property="receiverName"/>
         <result column="receiver_phone" property="receiverPhone"/>
@@ -14,8 +16,8 @@
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO order_main (order_no, user_id, total_amount, status, receiver_name, receiver_phone, receiver_address)
-        VALUES (#{orderNo}, #{userId}, #{totalAmount}, #{status}, #{receiverName}, #{receiverPhone}, #{receiverAddress})
+        INSERT INTO order_main (order_no, user_id, total_amount, discount_amount, coupon_id, status, receiver_name, receiver_phone, receiver_address)
+        VALUES (#{orderNo}, #{userId}, #{totalAmount}, #{discountAmount}, #{couponId}, #{status}, #{receiverName}, #{receiverPhone}, #{receiverAddress})
     </insert>
     <select id="selectById" resultMap="BaseResultMap">
         SELECT * FROM order_main WHERE id = #{id}

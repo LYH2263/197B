@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.CouponMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.Coupon">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="threshold" property="threshold"/>
+        <result column="face_value" property="faceValue"/>
+        <result column="discount_rate" property="discountRate"/>
+        <result column="valid_start" property="validStart"/>
+        <result column="valid_end" property="validEnd"/>
+        <result column="total_quantity" property="totalQuantity"/>
+        <result column="claimed_quantity" property="claimedQuantity"/>
+        <result column="used_quantity" property="usedQuantity"/>
+        <result column="per_user_limit" property="perUserLimit"/>
+        <result column="applicable_category" property="applicableCategory"/>
+        <result column="status" property="status"/>
+        <result column="version" property="version"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.shop.entity.Coupon" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO coupon (name, type, threshold, face_value, discount_rate, valid_start, valid_end,
+                            total_quantity, claimed_quantity, used_quantity, per_user_limit, applicable_category, status, version)
+        VALUES (#{name}, #{type}, #{threshold}, #{faceValue}, #{discountRate}, #{validStart}, #{validEnd},
+                #{totalQuantity}, #{claimedQuantity}, #{usedQuantity}, #{perUserLimit}, #{applicableCategory}, #{status}, #{version})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM coupon WHERE id = #{id}
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT * FROM coupon
+        <where>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectAvailable" resultMap="BaseResultMap">
+        SELECT * FROM coupon
+        WHERE status = 1
+          AND total_quantity > claimed_quantity
+          AND valid_start &lt;= #{now}
+          AND valid_end &gt;= #{now}
+        ORDER BY id DESC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE coupon SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="increaseClaimedQuantity">
+        UPDATE coupon
+        SET claimed_quantity = claimed_quantity + 1,
+            version = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
+          AND claimed_quantity &lt; total_quantity
+    </update>
+
+    <update id="increaseUsedQuantity">
+        UPDATE coupon SET used_quantity = used_quantity + 1 WHERE id = #{id}
+    </update>
+</mapper>

@@ -6,16 +6,19 @@
         <nav class="nav">
           <router-link to="/" class="nav-link">首页</router-link>
           <router-link to="/products" class="nav-link">商品</router-link>
+          <router-link to="/coupon-center" class="nav-link">领券中心</router-link>
           <router-link to="/cart" class="nav-link cart-link">
             购物车
             <el-badge v-if="cartCount" :value="cartCount" class="cart-badge" />
           </router-link>
           <template v-if="userStore.isLoggedIn">
             <router-link to="/orders" class="nav-link">我的订单</router-link>
+            <router-link to="/my-coupons" class="nav-link">我的优惠券</router-link>
             <router-link to="/after-sale" class="nav-link">我的售后</router-link>
             <router-link to="/my-reviews" class="nav-link">我的评价</router-link>
             <template v-if="userStore.isAdmin">
               <router-link to="/admin/users" class="nav-link">用户管理</router-link>
+              <router-link to="/admin/coupons" class="nav-link">优惠券管理</router-link>
               <router-link to="/admin/reviews" class="nav-link">评价管理</router-link>
               <router-link to="/admin/after-sale" class="nav-link">售后管理</router-link>
             </template>

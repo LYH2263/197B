@@ -18,6 +18,8 @@ public class OrderMain implements Serializable {
     private String orderNo;
     private Long userId;
     private BigDecimal totalAmount;
+    private BigDecimal discountAmount;
+    private Long couponId;
     private Integer status;
     private String receiverName;
     private String receiverPhone;

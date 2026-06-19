@@ -18,4 +18,6 @@ public class OrderCreateRequest {
 
     @NotBlank(message = "收货地址不能为空")
     private String receiverAddress;
+
+    private Long userCouponId;
 }

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.UserCouponMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.UserCoupon">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="coupon_id" property="couponId"/>
+        <result column="code" property="code"/>
+        <result column="status" property="status"/>
+        <result column="used_order_id" property="usedOrderId"/>
+        <result column="used_at" property="usedAt"/>
+        <result column="claimed_at" property="claimedAt"/>
+        <result column="expired_at" property="expiredAt"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.shop.entity.UserCoupon" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_coupon (user_id, coupon_id, code, status, expired_at)
+        VALUES (#{userId}, #{couponId}, #{code}, #{status}, #{expiredAt})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM user_coupon WHERE id = #{id}
+    </select>
+
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT * FROM user_coupon WHERE code = #{code}
+    </select>
+
+    <select id="selectByUserIdAndStatus" resultMap="BaseResultMap">
+        SELECT * FROM user_coupon
+        WHERE user_id = #{userId}
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY claimed_at DESC
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM user_coupon WHERE user_id = #{userId} ORDER BY claimed_at DESC
+    </select>
+
+    <select id="countByUserIdAndCouponId" resultType="int">
+        SELECT COUNT(*) FROM user_coupon WHERE user_id = #{userId} AND coupon_id = #{couponId}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE user_coupon SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="markUsed">
+        UPDATE user_coupon
+        SET status = 1, used_order_id = #{orderId}, used_at = #{usedAt}
+        WHERE id = #{id} AND status = 0
+    </update>
+
+    <update id="expireOverdue">
+        UPDATE user_coupon
+        SET status = 2
+        WHERE status = 0 AND expired_at &lt; #{now}
+    </update>
+
+    <select id="selectAvailableByUserId" resultMap="BaseResultMap">
+        SELECT uc.* FROM user_coupon uc
+        INNER JOIN coupon c ON uc.coupon_id = c.id
+        WHERE uc.user_id = #{userId}
+          AND uc.status = 0
+          AND c.status = 1
+          AND uc.expired_at &gt;= #{now}
+        ORDER BY uc.expired_at ASC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM user_coupon
+        <where>
+            <if test="couponId != null">AND coupon_id = #{couponId}</if>
+        </where>
+        ORDER BY claimed_at DESC
+    </select>
+</mapper>

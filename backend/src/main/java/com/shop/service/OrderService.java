@@ -1,5 +1,7 @@
 package com.shop.service;
 
+import com.shop.dto.CouponCalculateRequest;
+import com.shop.dto.CouponCalculateResult;
 import com.shop.dto.OrderCreateRequest;
 import com.shop.entity.CartItem;
 import com.shop.entity.OrderItem;
@@ -18,12 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * 订单服务
- */
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -35,6 +35,7 @@ public class OrderService {
     private final OrderItemMapper orderItemMapper;
     private final CartItemMapper cartItemMapper;
     private final ProductMapper productMapper;
+    private final CouponService couponService;
 
     @Transactional(rollbackFor = Exception.class)
     public OrderMain create(Long userId, OrderCreateRequest req) {
@@ -42,6 +43,8 @@ public class OrderService {
         if (checked.isEmpty()) {
             throw new IllegalArgumentException("请先勾选要结算的商品");
         }
+
+        List<CouponCalculateRequest.OrderItemDTO> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (CartItem item : checked) {
             Product p = productMapper.selectById(item.getProductId());
@@ -49,17 +52,49 @@ public class OrderService {
                 throw new IllegalStateException("商品 " + (p != null ? p.getName() : item.getProductId()) + " 库存不足");
             }
             totalAmount = totalAmount.add(p.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+            CouponCalculateRequest.OrderItemDTO dto = new CouponCalculateRequest.OrderItemDTO();
+            dto.setProductId(p.getId());
+            dto.setCategoryId(p.getCategoryId());
+            dto.setPrice(p.getPrice());
+            dto.setQuantity(item.getQuantity());
+            orderItems.add(dto);
         }
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        Long couponId = null;
+        if (req.getUserCouponId() != null) {
+            CouponCalculateRequest calcReq = new CouponCalculateRequest();
+            calcReq.setItems(orderItems);
+            calcReq.setUserCouponId(req.getUserCouponId());
+            CouponCalculateResult calcResult = couponService.calculate(userId, calcReq);
+            if (calcResult.getSelectedCoupon() == null || !calcResult.getSelectedCoupon().getAvailable()) {
+                throw new IllegalArgumentException("选择的优惠券不可用");
+            }
+            discountAmount = calcResult.getDiscountAmount();
+            couponId = calcResult.getSelectedCoupon().getCouponId();
+        }
+
+        BigDecimal finalAmount = totalAmount.subtract(discountAmount);
+        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            finalAmount = BigDecimal.ZERO;
+        }
+
         String orderNo = "O" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + String.format("%04d", SEQ.incrementAndGet() % 10000);
         OrderMain order = new OrderMain();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
-        order.setTotalAmount(totalAmount);
+        order.setTotalAmount(finalAmount);
+        order.setDiscountAmount(discountAmount);
+        order.setCouponId(couponId);
         order.setStatus(0);
         order.setReceiverName(req.getReceiverName());
         order.setReceiverPhone(req.getReceiverPhone());
         order.setReceiverAddress(req.getReceiverAddress());
         orderMainMapper.insert(order);
+
+        if (req.getUserCouponId() != null) {
+            couponService.useCoupon(req.getUserCouponId(), userId, order.getId());
+        }
         for (CartItem item : checked) {
             Product p = productMapper.selectById(item.getProductId());
             productMapper.updateStock(p.getId(), item.getQuantity());
