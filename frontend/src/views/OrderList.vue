@@ -16,7 +16,13 @@
         <p class="order-amount">
           合计：<strong>¥ {{ order.totalAmount }}</strong>
           <span v-if="order.discountAmount > 0" class="discount-amount">
-            (已优惠 ¥ {{ order.discountAmount }})
+            (券优惠 ¥ {{ order.discountAmount }})
+          </span>
+          <span v-if="order.pointsDiscount > 0" class="discount-amount">
+            (积分抵 ¥ {{ order.pointsDiscount }})
+          </span>
+          <span v-if="order.pointsEarned > 0" class="earn-amount">
+            (返 {{ order.pointsEarned }} 积分)
           </span>
         </p>
         <p class="order-time">下单时间：{{ order.createdAt }}</p>
@@ -26,6 +32,9 @@
             <el-button type="primary" size="small" @click="$router.push(`/orders/${order.id}`)">
               去评价
             </el-button>
+          </template>
+          <template v-if="order.status === 2">
+            <el-button type="success" size="small" @click="confirm(order.id)">确认收货</el-button>
           </template>
           <template v-if="order.status === 0">
             <el-button type="primary" size="small" @click="pay(order.id)">去支付</el-button>
@@ -96,23 +105,65 @@
           </div>
         </div>
 
+        <div class="checkout-section">
+          <div class="section-header">
+            <h4 class="section-title">积分抵扣</h4>
+            <el-switch v-model="usePoints" :disabled="pointsCalcResult.maxPointsUsable === 0" />
+          </div>
+          <div v-if="usePoints" class="points-use">
+            <div class="points-info">
+              <div>
+                <span class="points-label">当前积分：</span>
+                <span class="points-value">{{ pointsCalcResult.availablePoints || 0 }}</span>
+              </div>
+              <div>
+                <span class="points-label">最多可用：</span>
+                <span class="points-value points-value--highlight">{{ pointsCalcResult.maxPointsUsable || 0 }} 积分</span>
+                <span class="points-hint">（抵 ¥{{ pointsCalcResult.maxDiscountAmount || '0.00' }}，最多抵实付30%）</span>
+              </div>
+              <div>
+                <span class="points-label">当前等级：</span>
+                <span class="points-value">Lv{{ pointsCalcResult.level || 1 }}，{{ pointsCalcResult.pointRate || 1 }}倍积分</span>
+              </div>
+            </div>
+            <div class="points-slider">
+              <el-slider
+                v-model="checkoutForm.pointsToUse"
+                :min="0"
+                :max="pointsCalcResult.maxPointsUsable || 0"
+                :step="100"
+                :disabled="pointsCalcResult.maxPointsUsable === 0"
+                show-input
+                :show-input-controls="false"
+                input-size="small"
+              />
+              <div class="points-deduct-display">
+                抵扣金额：<strong class="points-deduct-amount">-¥{{ pointsDeductAmount.toFixed(2) }}</strong>
+              </div>
+            </div>
+          </div>
+          <div v-else class="no-points">
+            <span>不使用积分抵扣（可用 {{ pointsCalcResult.availablePoints || 0 }} 积分）</span>
+          </div>
+        </div>
+
         <div class="checkout-section price-section">
           <h4 class="section-title">金额明细</h4>
           <div class="price-row">
             <span class="label">商品金额</span>
-            <span class="value">¥ {{ couponCalcResult.originalAmount?.toFixed(2) || '0.00' }}</span>
+            <span class="value">¥ {{ displayOriginalAmount.toFixed(2) }}</span>
           </div>
           <div v-if="couponCalcResult.discountAmount > 0" class="price-row price-row--discount">
             <span class="label">优惠券抵扣</span>
-            <span class="value">-¥ {{ couponCalcResult.discountAmount?.toFixed(2) || '0.00' }}</span>
+            <span class="value">-¥ {{ Number(couponCalcResult.discountAmount).toFixed(2) }}</span>
           </div>
-          <div v-if="couponCalcResult.selectedCoupon" class="coupon-detail-row">
-            <span class="label">{{ couponCalcResult.selectedCoupon.name }}</span>
-            <span class="value">-¥ {{ couponCalcResult.discountAmount?.toFixed(2) || '0.00' }}</span>
+          <div v-if="pointsDeductAmount > 0" class="price-row price-row--discount">
+            <span class="label">积分抵扣</span>
+            <span class="value">-¥ {{ pointsDeductAmount.toFixed(2) }}</span>
           </div>
           <div class="price-row price-row--total">
             <span class="label">应付金额</span>
-            <span class="value total">¥ {{ couponCalcResult.finalAmount?.toFixed(2) || '0.00' }}</span>
+            <span class="value total">¥ {{ displayFinalAmount.toFixed(2) }}</span>
           </div>
         </div>
       </div>
@@ -157,33 +208,6 @@
           </div>
         </div>
         <el-empty v-else description="暂无可用优惠券" />
-
-        <div v-if="couponCalcResult.unavailableCoupons && couponCalcResult.unavailableCoupons.length > 0" class="unavailable-section">
-          <div class="picker-section-title">不可用优惠券 ({{ couponCalcResult.unavailableCoupons.length }})</div>
-          <div
-            v-for="coupon in couponCalcResult.unavailableCoupons"
-            :key="coupon.id"
-            class="coupon-option coupon-option--unavailable"
-          >
-            <div class="coupon-option-left">
-              <div class="coupon-amount-mini">
-                <template v-if="coupon.type === 1 || coupon.type === 3">
-                  <span class="currency">¥</span>
-                  <span class="amount">{{ coupon.faceValue }}</span>
-                </template>
-                <template v-else-if="coupon.type === 2">
-                  <span class="discount">{{ (coupon.discountRate * 10).toFixed(1) }}</span>
-                  <span class="discount-suffix">折</span>
-                </template>
-              </div>
-            </div>
-            <div class="coupon-option-right">
-              <div class="coupon-name">{{ coupon.name }}</div>
-              <div class="coupon-desc">{{ coupon.desc }}</div>
-              <div class="coupon-unavailable-reason">未满足使用门槛</div>
-            </div>
-          </div>
-        </div>
       </div>
       <template #footer>
         <el-button @click="showCouponPicker = false">取消</el-button>
@@ -194,9 +218,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Ticket } from '@element-plus/icons-vue'
 import api from '../api'
 import { useUserStore } from '../stores/user'
@@ -210,12 +234,14 @@ const showCouponPicker = ref(false)
 const calculating = ref(false)
 const submitting = ref(false)
 const tempCouponId = ref(null)
+const usePoints = ref(false)
 
 const checkoutForm = reactive({
   receiverName: '',
   receiverPhone: '',
   receiverAddress: '',
-  userCouponId: null
+  userCouponId: null,
+  pointsToUse: 0
 })
 
 const couponCalcResult = reactive({
@@ -223,15 +249,37 @@ const couponCalcResult = reactive({
   discountAmount: 0,
   finalAmount: 0,
   bestUserCouponId: null,
-  bestCoupon: null,
-  selectedUserCouponId: null,
   selectedCoupon: null,
   availableCoupons: [],
   unavailableCoupons: []
 })
 
+const pointsCalcResult = reactive({
+  availablePoints: 0,
+  maxPointsUsable: 0,
+  maxDiscountAmount: '0.00',
+  level: 1,
+  pointRate: '1'
+})
+
 const statusText = (s) => ({ 0: '待付款', 1: '已付款', 2: '已发货', 3: '已完成', 4: '已取消' })[s] || '未知'
 const statusType = (s) => ({ 0: 'warning', 1: 'primary', 2: 'info', 3: 'success', 4: 'info' })[s] || 'info'
+
+const displayOriginalAmount = computed(() => Number(couponCalcResult.originalAmount) || 0)
+
+const pointsDeductAmount = computed(() => {
+  if (!usePoints.value) return 0
+  const pts = checkoutForm.pointsToUse || 0
+  return pts / 100
+})
+
+const displayFinalAmount = computed(() => {
+  const original = displayOriginalAmount.value
+  const couponDisc = Number(couponCalcResult.discountAmount) || 0
+  const afterCoupon = Math.max(0, original - couponDisc)
+  const pointsDisc = pointsDeductAmount.value
+  return Math.max(0, afterCoupon - pointsDisc)
+})
 
 async function load() {
   loading.value = true
@@ -257,9 +305,8 @@ async function loadCart() {
   }
 }
 
-async function calculateCoupon() {
+async function recalcAll() {
   if (!userStore.isLoggedIn) return
-
   calculating.value = true
   try {
     const items = await loadCart()
@@ -269,7 +316,7 @@ async function calculateCoupon() {
       return
     }
 
-    const req = {
+    const couponReq = {
       items: items.map(i => ({
         productId: i.productId,
         categoryId: i.categoryId,
@@ -278,19 +325,42 @@ async function calculateCoupon() {
       })),
       userCouponId: checkoutForm.userCouponId
     }
-
-    const res = await api.post('/coupons/calculate', req)
-    if (res.data.code === 200) {
-      const data = res.data.data
+    const couponRes = await api.post('/coupons/calculate', couponReq)
+    if (couponRes.data.code === 200) {
+      const data = couponRes.data.data
       Object.assign(couponCalcResult, data)
       if (!checkoutForm.userCouponId && data.bestUserCouponId) {
         checkoutForm.userCouponId = data.bestUserCouponId
       }
     }
+
+    const original = Number(couponCalcResult.originalAmount) || 0
+    const couponDisc = Number(couponCalcResult.discountAmount) || 0
+    const afterCoupon = Math.max(0, original - couponDisc)
+
+    try {
+      const pointsRes = await api.get('/points/calculate', { params: { amount: afterCoupon } })
+      if (pointsRes.data.code === 200) {
+        Object.assign(pointsCalcResult, pointsRes.data.data)
+        if (usePoints.value) {
+          checkoutForm.pointsToUse = pointsCalcResult.maxPointsUsable || 0
+        } else {
+          checkoutForm.pointsToUse = 0
+        }
+      }
+    } catch {}
   } finally {
     calculating.value = false
   }
 }
+
+watch(usePoints, (v) => {
+  if (v) {
+    checkoutForm.pointsToUse = pointsCalcResult.maxPointsUsable || 0
+  } else {
+    checkoutForm.pointsToUse = 0
+  }
+})
 
 async function pay(orderId) {
   try {
@@ -298,6 +368,18 @@ async function pay(orderId) {
     ElMessage.success('支付成功（模拟）')
     load()
   } catch (e) {}
+}
+
+async function confirm(orderId) {
+  try {
+    await ElMessageBox.confirm('确认已收到商品？确认后将发放积分', '提示', { type: 'warning' })
+    await api.post(`/orders/${orderId}/confirm`)
+    ElMessage.success('已确认收货')
+    await userStore.fetchUser()
+    load()
+  } catch (e) {
+    if (e !== 'cancel') {}
+  }
 }
 
 async function cancel(orderId) {
@@ -315,13 +397,13 @@ function selectCoupon(coupon) {
 function confirmCoupon() {
   checkoutForm.userCouponId = tempCouponId.value
   showCouponPicker.value = false
-  nextTick(() => calculateCoupon())
+  nextTick(() => recalcAll())
 }
 
 function clearCoupon() {
   checkoutForm.userCouponId = null
   tempCouponId.value = null
-  calculateCoupon()
+  recalcAll()
 }
 
 function onCheckoutClose() {
@@ -329,9 +411,11 @@ function onCheckoutClose() {
     receiverName: '',
     receiverPhone: '',
     receiverAddress: '',
-    userCouponId: null
+    userCouponId: null,
+    pointsToUse: 0
   })
   tempCouponId.value = null
+  usePoints.value = false
 }
 
 async function submitOrder() {
@@ -345,13 +429,15 @@ async function submitOrder() {
       receiverName: checkoutForm.receiverName,
       receiverPhone: checkoutForm.receiverPhone,
       receiverAddress: checkoutForm.receiverAddress,
-      userCouponId: checkoutForm.userCouponId
+      userCouponId: checkoutForm.userCouponId,
+      pointsToUse: usePoints.value ? checkoutForm.pointsToUse : 0
     }
     const res = await api.post('/orders', data)
     if (res.data.code === 200) {
       ElMessage.success('订单创建成功')
       showCheckout.value = false
       onCheckoutClose()
+      await userStore.fetchUser()
       load()
       loadCart()
     }
@@ -372,7 +458,7 @@ watch(
     if (v === '1') {
       showCheckout.value = true
       await nextTick()
-      calculateCoupon()
+      recalcAll()
     }
   },
   { immediate: true }
@@ -436,6 +522,13 @@ onMounted(load)
 .discount-amount {
   font-size: 0.875rem;
   color: #f5222d;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+.earn-amount {
+  font-size: 0.875rem;
+  color: #52c41a;
   font-weight: normal;
   margin-left: 8px;
 }
@@ -541,7 +634,8 @@ onMounted(load)
 }
 
 .coupon-hint,
-.no-coupon {
+.no-coupon,
+.no-points {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -555,6 +649,57 @@ onMounted(load)
 .coupon-hint strong {
   color: var(--color-primary);
   margin: 0 4px;
+}
+
+.points-use {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
+  border: 1px solid #ffd591;
+  border-radius: var(--radius-sm);
+}
+
+.points-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+
+.points-label {
+  color: var(--color-text-secondary);
+}
+
+.points-value {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.points-value--highlight {
+  color: #fa8c16;
+}
+
+.points-hint {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  margin-left: 8px;
+}
+
+.points-slider {
+  padding: 0 8px;
+}
+
+.points-deduct-display {
+  margin-top: 8px;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+
+.points-deduct-amount {
+  color: #f5222d;
+  font-size: 1.125rem;
+  margin-left: 4px;
 }
 
 .price-section {
@@ -599,18 +744,6 @@ onMounted(load)
   color: var(--color-primary);
 }
 
-.coupon-detail-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0 4px 20px;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.coupon-detail-row .value {
-  color: #f5222d;
-}
-
 .coupon-picker {
   max-height: 50vh;
   overflow-y: auto;
@@ -622,12 +755,6 @@ onMounted(load)
   color: var(--color-text);
   margin: 0 0 12px 0;
   padding-left: 4px;
-}
-
-.unavailable-section {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border-light);
 }
 
 .coupon-option {
@@ -651,16 +778,6 @@ onMounted(load)
   background: var(--color-primary-light);
 }
 
-.coupon-option--unavailable {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.coupon-option--unavailable:hover {
-  border-color: var(--color-border);
-  background: transparent;
-}
-
 .coupon-radio {
   margin-right: 12px;
 }
@@ -669,10 +786,6 @@ onMounted(load)
   padding: 0 16px;
   border-right: 1px dashed var(--color-border);
   color: var(--color-primary);
-}
-
-.coupon-option--unavailable .coupon-option-left {
-  color: var(--color-text-muted);
 }
 
 .coupon-option-right {
@@ -701,11 +814,6 @@ onMounted(load)
 
 .coupon-option-right .coupon-expire {
   font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.coupon-option-right .coupon-unavailable-reason {
-  font-size: 0.8125rem;
   color: var(--color-text-muted);
 }
 

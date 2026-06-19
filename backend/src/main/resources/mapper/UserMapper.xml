@@ -11,12 +11,15 @@
         <result column="avatar" property="avatar"/>
         <result column="status" property="status"/>
         <result column="role" property="role"/>
+        <result column="points" property="points"/>
+        <result column="total_consume" property="totalConsume"/>
+        <result column="level" property="level"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO `user` (username, password, nickname, phone, email, status, role)
-        VALUES (#{username}, #{password}, #{nickname}, #{phone}, #{email}, #{status}, #{role})
+        INSERT INTO `user` (username, password, nickname, phone, email, status, role, points, total_consume, level)
+        VALUES (#{username}, #{password}, #{nickname}, #{phone}, #{email}, #{status}, #{role}, 0, 0.00, 1)
     </insert>
     <select id="selectById" resultMap="BaseResultMap">
         SELECT * FROM `user` WHERE id = #{id}
@@ -36,6 +39,9 @@
             <if test="avatar != null">avatar = #{avatar},</if>
             <if test="status != null">status = #{status},</if>
             <if test="role != null">role = #{role},</if>
+            <if test="points != null">points = #{points},</if>
+            <if test="totalConsume != null">total_consume = #{totalConsume},</if>
+            <if test="level != null">level = #{level},</if>
         </set>
         WHERE id = #{id}
     </update>

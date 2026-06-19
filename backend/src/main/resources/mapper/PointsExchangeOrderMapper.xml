@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.PointsExchangeOrderMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.PointsExchangeOrder">
+        <id column="id" property="id"/>
+        <result column="exchange_no" property="exchangeNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="points_product_id" property="pointsProductId"/>
+        <result column="product_name" property="productName"/>
+        <result column="product_image" property="productImage"/>
+        <result column="points_cost" property="pointsCost"/>
+        <result column="receiver_name" property="receiverName"/>
+        <result column="receiver_phone" property="receiverPhone"/>
+        <result column="receiver_address" property="receiverAddress"/>
+        <result column="status" property="status"/>
+        <result column="express_company" property="expressCompany"/>
+        <result column="express_no" property="expressNo"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO points_exchange_order (exchange_no, user_id, points_product_id, product_name, product_image, points_cost, receiver_name, receiver_phone, receiver_address, status)
+        VALUES (#{exchangeNo}, #{userId}, #{pointsProductId}, #{productName}, #{productImage}, #{pointsCost}, #{receiverName}, #{receiverPhone}, #{receiverAddress}, #{status})
+    </insert>
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM points_exchange_order WHERE id = #{id}
+    </select>
+    <select id="selectByExchangeNo" resultMap="BaseResultMap">
+        SELECT * FROM points_exchange_order WHERE exchange_no = #{exchangeNo}
+    </select>
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM points_exchange_order WHERE user_id = #{userId} ORDER BY id DESC
+    </select>
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM points_exchange_order ORDER BY id DESC
+    </select>
+    <update id="updateStatus">
+        UPDATE points_exchange_order SET status = #{status} WHERE id = #{id}
+    </update>
+    <update id="updateExpress">
+        UPDATE points_exchange_order SET express_company = #{company}, express_no = #{no}, status = 1 WHERE id = #{id}
+    </update>
+</mapper>

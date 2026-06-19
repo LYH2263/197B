@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ public class OrderService {
     private final CartItemMapper cartItemMapper;
     private final ProductMapper productMapper;
     private final CouponService couponService;
+    private final PointsLevelService pointsLevelService;
 
     @Transactional(rollbackFor = Exception.class)
     public OrderMain create(Long userId, OrderCreateRequest req) {
@@ -60,7 +62,7 @@ public class OrderService {
             orderItems.add(dto);
         }
 
-        BigDecimal discountAmount = BigDecimal.ZERO;
+        BigDecimal couponDiscount = BigDecimal.ZERO;
         Long couponId = null;
         if (req.getUserCouponId() != null) {
             CouponCalculateRequest calcReq = new CouponCalculateRequest();
@@ -70,22 +72,40 @@ public class OrderService {
             if (calcResult.getSelectedCoupon() == null || !calcResult.getSelectedCoupon().getAvailable()) {
                 throw new IllegalArgumentException("选择的优惠券不可用");
             }
-            discountAmount = calcResult.getDiscountAmount();
+            couponDiscount = calcResult.getDiscountAmount();
             couponId = calcResult.getSelectedCoupon().getCouponId();
         }
 
-        BigDecimal finalAmount = totalAmount.subtract(discountAmount);
-        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
-            finalAmount = BigDecimal.ZERO;
+        BigDecimal afterCoupon = totalAmount.subtract(couponDiscount);
+        if (afterCoupon.compareTo(BigDecimal.ZERO) < 0) afterCoupon = BigDecimal.ZERO;
+
+        int pointsToUse = req.getPointsToUse() != null ? req.getPointsToUse() : 0;
+        BigDecimal pointsDiscount = BigDecimal.ZERO;
+        int actualPointsUsed = 0;
+        if (pointsToUse > 0) {
+            var calc = pointsLevelService.calculateForOrder(userId, afterCoupon);
+            if (pointsToUse > calc.getMaxPointsUsable()) {
+                throw new IllegalArgumentException("使用积分超过最大可抵扣额度");
+            }
+            actualPointsUsed = pointsToUse;
+            pointsDiscount = new BigDecimal(actualPointsUsed)
+                    .divide(new BigDecimal(PointsLevelService.POINTS_PER_YUAN), 2, RoundingMode.DOWN);
         }
 
-        String orderNo = "O" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + String.format("%04d", SEQ.incrementAndGet() % 10000);
+        BigDecimal finalAmount = afterCoupon.subtract(pointsDiscount);
+        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) finalAmount = BigDecimal.ZERO;
+
+        String orderNo = "O" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + String.format("%04d", SEQ.incrementAndGet() % 10000);
         OrderMain order = new OrderMain();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
         order.setTotalAmount(finalAmount);
-        order.setDiscountAmount(discountAmount);
+        order.setDiscountAmount(couponDiscount);
         order.setCouponId(couponId);
+        order.setPointsDiscount(pointsDiscount);
+        order.setPointsUsed(actualPointsUsed);
+        order.setPointsEarned(0);
         order.setStatus(0);
         order.setReceiverName(req.getReceiverName());
         order.setReceiverPhone(req.getReceiverPhone());
@@ -94,6 +114,9 @@ public class OrderService {
 
         if (req.getUserCouponId() != null) {
             couponService.useCoupon(req.getUserCouponId(), userId, order.getId());
+        }
+        if (actualPointsUsed > 0) {
+            pointsLevelService.deductPointsForOrder(userId, actualPointsUsed, order.getId());
         }
         for (CartItem item : checked) {
             Product p = productMapper.selectById(item.getProductId());
@@ -109,7 +132,7 @@ public class OrderService {
             orderItemMapper.insert(oi);
             cartItemMapper.deleteByUserIdAndProductId(userId, item.getProductId());
         }
-        log.info("Order created: orderNo={}, userId={}", orderNo, userId);
+        log.info("Order created: orderNo={}, userId={}, pointsUsed={}", orderNo, userId, actualPointsUsed);
         return orderMainMapper.selectById(order.getId());
     }
 
@@ -139,6 +162,38 @@ public class OrderService {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public void ship(Long orderId) {
+        OrderMain order = orderMainMapper.selectById(orderId);
+        if (order == null) {
+            throw new IllegalArgumentException("订单不存在");
+        }
+        if (order.getStatus() != 1) {
+            throw new IllegalArgumentException("仅已付款订单可发货");
+        }
+        orderMainMapper.updateStatus(orderId, 2);
+        log.info("Order shipped: orderId={}", orderId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void confirmReceive(Long orderId, Long userId) {
+        OrderMain order = orderMainMapper.selectById(orderId);
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在");
+        }
+        if (order.getStatus() != 2) {
+            throw new IllegalArgumentException("仅已发货订单可确认收货");
+        }
+        orderMainMapper.updateStatus(orderId, 3);
+
+        BigDecimal paidAmount = order.getTotalAmount();
+        int awarded = pointsLevelService.awardPointsByOrder(userId, paidAmount, orderId);
+
+        orderMainMapper.updatePointsEarned(orderId, awarded);
+
+        log.info("Order confirmed: orderId={}, pointsEarned={}", orderId, awarded);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public void cancel(Long orderId, Long userId) {
         OrderMain order = orderMainMapper.selectById(orderId);
         if (order == null || !order.getUserId().equals(userId)) {
@@ -153,5 +208,9 @@ public class OrderService {
 
     public List<OrderItem> listItems(Long orderId) {
         return orderItemMapper.selectByOrderId(orderId);
+    }
+
+    public List<OrderMain> listAll() {
+        return orderMainMapper.selectAll();
     }
 }

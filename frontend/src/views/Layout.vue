@@ -7,17 +7,27 @@
           <router-link to="/" class="nav-link">首页</router-link>
           <router-link to="/products" class="nav-link">商品</router-link>
           <router-link to="/coupon-center" class="nav-link">领券中心</router-link>
+          <router-link to="/points-mall" class="nav-link">积分商城</router-link>
           <router-link to="/cart" class="nav-link cart-link">
             购物车
             <el-badge v-if="cartCount" :value="cartCount" class="cart-badge" />
           </router-link>
           <template v-if="userStore.isLoggedIn">
+            <router-link to="/points" class="nav-link">
+              <span class="points-nav">
+                积分
+                <el-tag v-if="userStore.user?.points" size="small" type="warning" effect="dark" round>{{ userStore.user.points }}</el-tag>
+              </span>
+            </router-link>
             <router-link to="/orders" class="nav-link">我的订单</router-link>
             <router-link to="/my-coupons" class="nav-link">我的优惠券</router-link>
+            <router-link to="/my-exchange" class="nav-link">我的兑换</router-link>
             <router-link to="/after-sale" class="nav-link">我的售后</router-link>
             <router-link to="/my-reviews" class="nav-link">我的评价</router-link>
             <template v-if="userStore.isAdmin">
               <router-link to="/admin/users" class="nav-link">用户管理</router-link>
+              <router-link to="/admin/points" class="nav-link">积分等级</router-link>
+              <router-link to="/admin/exchange" class="nav-link">兑换管理</router-link>
               <router-link to="/admin/coupons" class="nav-link">优惠券管理</router-link>
               <router-link to="/admin/reviews" class="nav-link">评价管理</router-link>
               <router-link to="/admin/after-sale" class="nav-link">售后管理</router-link>
@@ -141,7 +151,8 @@ function handleCommand(cmd) {
 .nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .nav-link {
@@ -149,7 +160,7 @@ function handleCommand(cmd) {
   text-decoration: none;
   font-size: 0.9375rem;
   font-weight: 500;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   transition: color var(--transition), background var(--transition);
 }
@@ -176,6 +187,12 @@ function handleCommand(cmd) {
 
 .cart-badge {
   margin-left: 4px;
+}
+
+.points-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .user-trigger {

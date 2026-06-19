@@ -70,6 +70,9 @@ public class AuthService {
         vo.setAvatar(user.getAvatar());
         vo.setStatus(user.getStatus());
         vo.setRole(user.getRole());
+        vo.setPoints(user.getPoints());
+        vo.setTotalConsume(user.getTotalConsume());
+        vo.setLevel(user.getLevel());
         vo.setCreatedAt(user.getCreatedAt());
         return vo;
     }

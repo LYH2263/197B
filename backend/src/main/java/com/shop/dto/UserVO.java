@@ -2,11 +2,9 @@ package com.shop.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * 用户展示 DTO（不含密码）
- */
 @Data
 public class UserVO {
 
@@ -18,5 +16,8 @@ public class UserVO {
     private String avatar;
     private Integer status;
     private String role;
+    private Integer points;
+    private BigDecimal totalConsume;
+    private Integer level;
     private LocalDateTime createdAt;
 }

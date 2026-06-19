@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/register", "/categories", "/products", "/products/**", "/reviews/product/**").permitAll()
                         .requestMatchers("/coupons/available", "/coupons/calculate").permitAll()
+                        .requestMatchers("/exchange/products", "/exchange/products/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

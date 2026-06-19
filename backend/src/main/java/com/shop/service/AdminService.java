@@ -39,6 +39,9 @@ public class AdminService {
             vo.setAvatar(u.getAvatar());
             vo.setStatus(u.getStatus());
             vo.setRole(u.getRole());
+            vo.setPoints(u.getPoints());
+            vo.setTotalConsume(u.getTotalConsume());
+            vo.setLevel(u.getLevel());
             vo.setCreatedAt(u.getCreatedAt());
             result.add(vo);
         }

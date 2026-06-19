@@ -9,6 +9,9 @@
         <p><strong>收货人：</strong>{{ order.receiverName }} {{ order.receiverPhone }}</p>
         <p><strong>收货地址：</strong>{{ order.receiverAddress }}</p>
         <p><strong>订单金额：</strong>¥ {{ order.totalAmount }}</p>
+        <p v-if="order.discountAmount > 0"><strong>优惠券抵扣：</strong>-¥ {{ order.discountAmount }}</p>
+        <p v-if="order.pointsDiscount > 0"><strong>积分抵扣：</strong>-¥ {{ order.pointsDiscount }}（使用 {{ order.pointsUsed }} 积分）</p>
+        <p v-if="order.pointsEarned > 0"><strong>获得积分：</strong>+{{ order.pointsEarned }} 积分</p>
         <p><strong>下单时间：</strong>{{ order.createdAt }}</p>
         <el-divider />
         <h4>商品明细</h4>
@@ -47,9 +50,14 @@
             </template>
           </el-table-column>
         </el-table>
-        <div v-if="order.status === 0" class="actions">
-          <el-button type="primary" @click="pay">去支付</el-button>
-          <el-button @click="cancel">取消订单</el-button>
+        <div class="actions">
+          <template v-if="order.status === 0">
+            <el-button type="primary" @click="pay">去支付</el-button>
+            <el-button @click="cancel">取消订单</el-button>
+          </template>
+          <template v-if="order.status === 2">
+            <el-button type="success" @click="confirm">确认收货</el-button>
+          </template>
         </div>
       </div>
       <el-dialog v-model="reviewVisible" title="商品评价" width="400px" @close="reviewForm = {}">
@@ -74,11 +82,13 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../api'
+import { useUserStore } from '../stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(true)
 const order = ref(null)
 const items = ref([])
@@ -96,11 +106,9 @@ function statusText(s) {
 function statusType(s) {
   return { 0: 'warning', 1: 'primary', 2: 'info', 3: 'success', 4: 'info' }[s] || 'info'
 }
-/** 已付款(1)、已发货(2)、已完成(3) 可评价 */
 function canReview(status) {
   return status >= 1 && status <= 3
 }
-/** 已完成(3) 可申请售后 */
 function canAfterSale(status) {
   return status === 3
 }
@@ -148,6 +156,18 @@ async function pay() {
     ElMessage.success('支付成功（模拟）')
     load()
   } catch (e) {}
+}
+
+async function confirm() {
+  try {
+    await ElMessageBox.confirm('确认已收到商品？确认后将发放积分', '提示', { type: 'warning' })
+    await api.post(`/orders/${orderId.value}/confirm`)
+    ElMessage.success('已确认收货，积分已发放')
+    await userStore.fetchUser()
+    load()
+  } catch (e) {
+    if (e !== 'cancel') {}
+  }
 }
 
 async function cancel() {

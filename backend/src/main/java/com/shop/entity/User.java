@@ -3,11 +3,9 @@ package com.shop.entity;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * 用户实体
- */
 @Data
 public class User implements Serializable {
 
@@ -22,6 +20,9 @@ public class User implements Serializable {
     private String avatar;
     private Integer status;
     private String role;
+    private Integer points;
+    private BigDecimal totalConsume;
+    private Integer level;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -139,3 +139,57 @@ CREATE TABLE IF NOT EXISTS after_sale_supplement (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uk_supplement_no ON after_sale_supplement(supplement_no);
+
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS points INT NOT NULL DEFAULT 0;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS total_consume DECIMAL(12,2) NOT NULL DEFAULT 0.00;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "level" TINYINT NOT NULL DEFAULT 1;
+
+ALTER TABLE order_main ADD COLUMN IF NOT EXISTS points_discount DECIMAL(12,2) NOT NULL DEFAULT 0.00;
+ALTER TABLE order_main ADD COLUMN IF NOT EXISTS points_used INT NOT NULL DEFAULT 0;
+ALTER TABLE order_main ADD COLUMN IF NOT EXISTS points_earned INT NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS points_log (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  type TINYINT NOT NULL,
+  change_points INT NOT NULL,
+  balance INT NOT NULL,
+  related_type VARCHAR(32),
+  related_id BIGINT,
+  remark VARCHAR(256),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_points_log_user ON points_log(user_id);
+
+CREATE TABLE IF NOT EXISTS points_product (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(128) NOT NULL,
+  image VARCHAR(256),
+  description VARCHAR(512),
+  points_required INT NOT NULL,
+  stock INT NOT NULL DEFAULT 0,
+  status TINYINT NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS points_exchange_order (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  exchange_no VARCHAR(32) NOT NULL,
+  user_id BIGINT NOT NULL,
+  points_product_id BIGINT NOT NULL,
+  product_name VARCHAR(128) NOT NULL,
+  product_image VARCHAR(256),
+  points_cost INT NOT NULL,
+  receiver_name VARCHAR(64),
+  receiver_phone VARCHAR(20),
+  receiver_address VARCHAR(256),
+  status TINYINT NOT NULL DEFAULT 0,
+  express_company VARCHAR(64),
+  express_no VARCHAR(64),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_exchange_no ON points_exchange_order(exchange_no);
+

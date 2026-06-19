@@ -11,11 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
-/**
- * 订单接口
- */
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
@@ -67,6 +63,13 @@ public class OrderController {
     public Result<Void> pay(Authentication auth, @PathVariable Long id) {
         Long userId = requireUserId(auth);
         orderService.pay(id, userId);
+        return Result.ok();
+    }
+
+    @PostMapping("/{id}/confirm")
+    public Result<Void> confirmReceive(Authentication auth, @PathVariable Long id) {
+        Long userId = requireUserId(auth);
+        orderService.confirmReceive(id, userId);
         return Result.ok();
     }
 

@@ -3,27 +3,26 @@ package com.shop.entity;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-public class OrderMain implements Serializable {
+public class PointsExchangeOrder implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private Long id;
-    private String orderNo;
+    private String exchangeNo;
     private Long userId;
-    private BigDecimal totalAmount;
-    private BigDecimal discountAmount;
-    private Long couponId;
-    private BigDecimal pointsDiscount;
-    private Integer pointsUsed;
-    private Integer pointsEarned;
-    private Integer status;
+    private Long pointsProductId;
+    private String productName;
+    private String productImage;
+    private Integer pointsCost;
     private String receiverName;
     private String receiverPhone;
     private String receiverAddress;
+    private Integer status;
+    private String expressCompany;
+    private String expressNo;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.PointsLogMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.PointsLog">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="type" property="type"/>
+        <result column="change_points" property="changePoints"/>
+        <result column="balance" property="balance"/>
+        <result column="related_type" property="relatedType"/>
+        <result column="related_id" property="relatedId"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO points_log (user_id, type, change_points, balance, related_type, related_id, remark)
+        VALUES (#{userId}, #{type}, #{changePoints}, #{balance}, #{relatedType}, #{relatedId}, #{remark})
+    </insert>
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM points_log WHERE user_id = #{userId} ORDER BY id DESC LIMIT #{offset}, #{limit}
+    </select>
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM points_log WHERE user_id = #{userId}
+    </select>
+</mapper>
