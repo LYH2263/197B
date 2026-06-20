@@ -138,6 +138,49 @@
             </template>
           </el-table-column>
         </el-table>
+        <div class="invoice-section" v-if="order.status === 3">
+          <el-divider />
+          <div class="invoice-info">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <h4 style="margin: 0 0 8px 0;">发票信息</h4>
+                <div v-if="invoice">
+                  <el-tag :type="invoiceStatusType(invoice.status)" size="small" style="margin-right: 8px;">
+                    {{ invoiceStatusText(invoice.status) }}
+                  </el-tag>
+                  <span v-if="invoice.invoiceNumber" style="margin-right: 8px;">发票号：{{ invoice.invoiceNumber }}</span>
+                  <span>抬头：{{ invoice.title }}</span>
+                </div>
+                <div v-else style="color: var(--color-text-muted);">
+                  您可以为该订单申请开具发票
+                </div>
+              </div>
+              <div class="invoice-actions">
+                <template v-if="!invoice">
+                  <el-button type="primary" @click="applyInvoice">申请发票</el-button>
+                </template>
+                <template v-else>
+                  <el-button
+                    v-if="invoice.status === 2"
+                    type="primary"
+                    @click="editInvoice(invoice.id)"
+                  >
+                    修改重提
+                  </el-button>
+                  <el-button
+                    v-if="invoice.status === 1"
+                    type="success"
+                    @click="downloadInvoice(invoice.id)"
+                  >
+                    下载PDF
+                  </el-button>
+                  <el-button type="info" @click="viewInvoiceDetail(invoice.id)">查看详情</el-button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="actions">
           <template v-if="order.status === 0">
             <el-button type="primary" @click="pay">去支付</el-button>
@@ -210,6 +253,65 @@
       <el-dialog v-model="previewVisible" title="图片预览" width="600px">
         <img :src="previewUrl" style="width: 100%; height: auto; display: block;" />
       </el-dialog>
+
+      <el-dialog v-model="invoiceDetailVisible" title="发票详情" width="600px">
+        <div v-if="currentInvoiceDetail">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="订单号">{{ currentInvoiceDetail.orderNo }}</el-descriptions-item>
+            <el-descriptions-item label="发票号码">{{ currentInvoiceDetail.invoiceNumber || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="发票类型">
+              {{ currentInvoiceDetail.invoiceType === 'enterprise' ? '企业' : '个人' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="invoiceStatusType(currentInvoiceDetail.status)" size="small">
+                {{ invoiceStatusText(currentInvoiceDetail.status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="抬头">{{ currentInvoiceDetail.title }}</el-descriptions-item>
+            <el-descriptions-item label="税号">{{ currentInvoiceDetail.taxNumber || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="接收邮箱">{{ currentInvoiceDetail.receiveEmail }}</el-descriptions-item>
+            <el-descriptions-item label="申请时间">{{ formatTime(currentInvoiceDetail.createdAt) }}</el-descriptions-item>
+          </el-descriptions>
+          <el-alert
+            v-if="currentInvoiceDetail.rejectReason"
+            :title="'驳回原因：' + currentInvoiceDetail.rejectReason"
+            type="error"
+            show-icon
+            style="margin-top: 16px"
+          />
+          <h4 style="margin-top: 20px; margin-bottom: 12px;">订单明细</h4>
+          <el-table :data="currentInvoiceDetail.orderItems || []" size="small" style="width: 100%">
+            <el-table-column prop="productName" label="商品" />
+            <el-table-column prop="price" label="单价" width="100">
+              <template #default="{ row }">¥{{ row.price }}</template>
+            </el-table-column>
+            <el-table-column prop="quantity" label="数量" width="80" />
+            <el-table-column prop="totalAmount" label="小计" width="100">
+              <template #default="{ row }">¥{{ row.totalAmount }}</template>
+            </el-table-column>
+          </el-table>
+          <div style="text-align: right; margin-top: 12px; font-weight: 600;">
+            订单总金额：¥{{ currentInvoiceDetail.orderAmount }}
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="invoiceDetailVisible = false">关闭</el-button>
+          <el-button
+            v-if="currentInvoiceDetail && currentInvoiceDetail.status === 1"
+            type="primary"
+            @click="downloadInvoice(currentInvoiceDetail.id)"
+          >
+            下载PDF
+          </el-button>
+          <el-button
+            v-if="currentInvoiceDetail && currentInvoiceDetail.status === 2"
+            type="primary"
+            @click="editInvoice(currentInvoiceDetail.id)"
+          >
+            修改重提
+          </el-button>
+        </template>
+      </el-dialog>
     </template>
     <el-empty v-else-if="!loading" description="订单不存在" />
   </div>
@@ -220,8 +322,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Location, Plus } from '@element-plus/icons-vue'
-import api from '../api'
+import api, { invoiceApi } from '../api'
 import { useUserStore } from '../stores/user'
+import { generateInvoicePdf } from '../utils/invoicePdf'
 
 const route = useRoute()
 const router = useRouter()
@@ -255,6 +358,10 @@ const issueSubmitting = ref(false)
 const previewVisible = ref(false)
 const previewUrl = ref('')
 
+const invoice = ref(null)
+const invoiceDetailVisible = ref(false)
+const currentInvoiceDetail = ref(null)
+
 const orderId = computed(() => Number(route.params.id))
 
 function statusText(s) {
@@ -268,6 +375,13 @@ function canReview(status) {
 }
 function canAfterSale(status) {
   return status === 3
+}
+
+function invoiceStatusText(s) {
+  return { 0: '待开票', 1: '已开票', 2: '已驳回' }[s] || '未知'
+}
+function invoiceStatusType(s) {
+  return { 0: 'warning', 1: 'success', 2: 'danger' }[s] || 'info'
 }
 
 function traceStatusText(s) {
@@ -408,6 +522,49 @@ function formatTime(t) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
+function applyInvoice() {
+  router.push({ name: 'InvoiceApply', query: { orderId: orderId.value } })
+}
+
+function editInvoice(id) {
+  router.push({ name: 'InvoiceEdit', params: { id } })
+}
+
+async function loadInvoice() {
+  if (!order.value || order.value.status !== 3) {
+    invoice.value = null
+    return
+  }
+  try {
+    const res = await invoiceApi.getByOrderId(orderId.value)
+    if (res.data.code === 200) {
+      invoice.value = res.data.data
+    }
+  } catch (e) {
+    invoice.value = null
+  }
+}
+
+async function viewInvoiceDetail(id) {
+  try {
+    const res = await invoiceApi.getDetail(id)
+    if (res.data.code === 200) {
+      currentInvoiceDetail.value = res.data.data
+      invoiceDetailVisible.value = true
+    }
+  } catch (e) {}
+}
+
+async function downloadInvoice(id) {
+  try {
+    const res = await invoiceApi.getDetail(id)
+    if (res.data.code === 200) {
+      generateInvoicePdf(res.data.data)
+      ElMessage.success('PDF下载成功')
+    }
+  } catch (e) {}
+}
+
 async function loadShipment() {
   if (!order.value || order.value.status < 2) {
     shipmentInfo.value = null
@@ -447,6 +604,7 @@ async function load() {
         .map((a) => a.orderItemId)
     )
     await loadShipment()
+    await loadInvoice()
   } finally {
     loading.value = false
   }
@@ -592,5 +750,18 @@ onMounted(load)
 
 .urge-section {
   padding-top: 4px;
+}
+
+.invoice-section {
+  margin-top: 24px;
+}
+
+.invoice-info {
+  padding-top: 8px;
+}
+
+.invoice-actions {
+  display: flex;
+  gap: 8px;
 }
 </style>

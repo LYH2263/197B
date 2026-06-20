@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.mapper.InvoiceRequestMapper">
+    <resultMap id="BaseResultMap" type="com.shop.entity.InvoiceRequest">
+        <id column="id" property="id"/>
+        <result column="order_id" property="orderId"/>
+        <result column="user_id" property="userId"/>
+        <result column="invoice_type" property="invoiceType"/>
+        <result column="title" property="title"/>
+        <result column="tax_number" property="taxNumber"/>
+        <result column="bank_name" property="bankName"/>
+        <result column="bank_account" property="bankAccount"/>
+        <result column="address" property="address"/>
+        <result column="phone" property="phone"/>
+        <result column="receive_email" property="receiveEmail"/>
+        <result column="invoice_number" property="invoiceNumber"/>
+        <result column="status" property="status"/>
+        <result column="reject_reason" property="rejectReason"/>
+        <result column="admin_id" property="adminId"/>
+        <result column="admin_name" property="adminName"/>
+        <result column="reviewed_at" property="reviewedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO invoice_request (order_id, user_id, invoice_type, title, tax_number, bank_name, bank_account, address, phone, receive_email, status)
+        VALUES (#{orderId}, #{userId}, #{invoiceType}, #{title}, #{taxNumber}, #{bankName}, #{bankAccount}, #{address}, #{phone}, #{receiveEmail}, #{status})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM invoice_request WHERE id = #{id}
+    </select>
+
+    <select id="selectByOrderId" resultMap="BaseResultMap">
+        SELECT * FROM invoice_request WHERE order_id = #{orderId}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM invoice_request WHERE user_id = #{userId} ORDER BY id DESC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM invoice_request
+        <where>
+            <if test="status != null">AND status = #{status}</if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT * FROM invoice_request WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY id DESC
+    </select>
+
+    <update id="update">
+        UPDATE invoice_request
+        <set>
+            <if test="invoiceType != null">invoice_type = #{invoiceType},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="taxNumber != null">tax_number = #{taxNumber},</if>
+            <if test="bankName != null">bank_name = #{bankName},</if>
+            <if test="bankAccount != null">bank_account = #{bankAccount},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="receiveEmail != null">receive_email = #{receiveEmail},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE invoice_request SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="approve">
+        UPDATE invoice_request
+        SET status = 1, invoice_number = #{invoiceNumber}, admin_id = #{adminId}, admin_name = #{adminName}, reviewed_at = #{reviewedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="reject">
+        UPDATE invoice_request
+        SET status = 2, reject_reason = #{rejectReason}, admin_id = #{adminId}, admin_name = #{adminName}, reviewed_at = #{reviewedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateInvoiceNumber">
+        UPDATE invoice_request SET invoice_number = #{invoiceNumber} WHERE id = #{id}
+    </update>
+</mapper>

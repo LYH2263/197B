@@ -28,4 +28,19 @@ api.interceptors.response.use(
   }
 )
 
+export const invoiceApi = {
+  create: (data) => api.post('/invoices', data),
+  update: (id, data) => api.put(`/invoices/${id}`, data),
+  list: () => api.get('/invoices'),
+  getDetail: (id) => api.get(`/invoices/${id}`),
+  getByOrderId: (orderId) => api.get(`/invoices/order/${orderId}`),
+
+  adminList: (status) => api.get('/admin/invoices', { params: { status } }),
+  adminGetDetail: (id) => api.get(`/admin/invoices/${id}`),
+  adminApprove: (id, invoiceNumber) => api.post(`/admin/invoices/${id}/approve`, { invoiceNumber }),
+  adminReject: (id, rejectReason) => api.post(`/admin/invoices/${id}/reject`, { rejectReason }),
+  adminUpdateInvoiceNumber: (id, invoiceNumber) => api.post(`/admin/invoices/${id}/invoice-number`, { invoiceNumber }),
+  adminExport: (ids) => api.get('/admin/invoices/export', { params: { ids }, responseType: 'blob' }),
+}
+
 export default api

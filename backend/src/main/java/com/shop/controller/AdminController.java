@@ -5,6 +5,7 @@ import com.shop.dto.*;
 import com.shop.entity.AfterSale;
 import com.shop.entity.DeliveryIssue;
 import com.shop.entity.DeliveryUrge;
+import com.shop.entity.InvoiceRequest;
 import com.shop.entity.OrderMain;
 import com.shop.entity.PointsExchangeOrder;
 import com.shop.entity.PointsProduct;
@@ -14,12 +15,20 @@ import com.shop.mapper.UserMapper;
 import com.shop.dto.ViewHistoryTop10VO;
 import com.shop.service.AdminService;
 import com.shop.service.AfterSaleService;
+import com.shop.service.InvoiceService;
 import com.shop.service.OrderService;
 import com.shop.service.PointsExchangeService;
 import com.shop.service.PointsLevelService;
 import com.shop.service.ShipmentService;
 import com.shop.service.ViewHistoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,6 +49,7 @@ public class AdminController {
     private final PointsExchangeService pointsExchangeService;
     private final ShipmentService shipmentService;
     private final ViewHistoryService viewHistoryService;
+    private final InvoiceService invoiceService;
 
     private String getAdminName(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof Long)) return "管理员";
@@ -248,5 +258,57 @@ public class AdminController {
     @GetMapping("/view-history/top10")
     public Result<List<ViewHistoryTop10VO>> getViewHistoryTop10() {
         return Result.ok(viewHistoryService.getTop10ProductsLast7Days());
+    }
+
+    @GetMapping("/invoices")
+    public Result<List<InvoiceVO>> listInvoices(@RequestParam(required = false) Integer status) {
+        return Result.ok(invoiceService.convertToVOList(invoiceService.listAll(status)));
+    }
+
+    @GetMapping("/invoices/{id}")
+    public Result<InvoiceVO> getInvoiceDetail(@PathVariable Long id) {
+        InvoiceVO vo = invoiceService.getDetail(id, null);
+        if (vo == null) return Result.fail(404, "发票申请不存在");
+        return Result.ok(vo);
+    }
+
+    @PostMapping("/invoices/{id}/approve")
+    public Result<Void> approveInvoice(Authentication auth, @PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        Long adminId = getAdminId(auth);
+        String adminName = getAdminName(auth);
+        String invoiceNumber = body != null && body.get("invoiceNumber") != null ? String.valueOf(body.get("invoiceNumber")) : null;
+        invoiceService.approve(id, invoiceNumber, adminId, adminName);
+        return Result.ok();
+    }
+
+    @PostMapping("/invoices/{id}/reject")
+    public Result<Void> rejectInvoice(Authentication auth, @PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        Long adminId = getAdminId(auth);
+        String adminName = getAdminName(auth);
+        String rejectReason = body != null && body.get("rejectReason") != null ? String.valueOf(body.get("rejectReason")) : null;
+        invoiceService.reject(id, rejectReason, adminId, adminName);
+        return Result.ok();
+    }
+
+    @PostMapping("/invoices/{id}/invoice-number")
+    public Result<Void> updateInvoiceNumber(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String invoiceNumber = body.get("invoiceNumber") != null ? String.valueOf(body.get("invoiceNumber")) : null;
+        invoiceService.updateInvoiceNumber(id, invoiceNumber);
+        return Result.ok();
+    }
+
+    @GetMapping("/invoices/export")
+    public ResponseEntity<byte[]> exportInvoices(@RequestParam(required = false) List<Long> ids) {
+        String csv = invoiceService.exportCsv(ids);
+        String filename = "invoices_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv; charset=utf-8"));
+        headers.setContentDispositionFormData("attachment", filename);
+        byte[] bom = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+        byte[] content = csv.getBytes(StandardCharsets.UTF_8);
+        byte[] result = new byte[bom.length + content.length];
+        System.arraycopy(bom, 0, result, 0, bom.length);
+        System.arraycopy(content, 0, result, bom.length, content.length);
+        return ResponseEntity.ok().headers(headers).body(result);
     }
 }

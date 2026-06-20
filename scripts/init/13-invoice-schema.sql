@@ -1,0 +1,27 @@
+-- 电子发票表
+CREATE TABLE IF NOT EXISTS `invoice_request` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_id` BIGINT NOT NULL COMMENT '订单ID',
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `invoice_type` VARCHAR(20) NOT NULL COMMENT '发票类型：personal个人/enterprise企业',
+  `title` VARCHAR(128) NOT NULL COMMENT '发票抬头',
+  `tax_number` VARCHAR(32) DEFAULT NULL COMMENT '税号（企业必填，个人选填）',
+  `bank_name` VARCHAR(128) DEFAULT NULL COMMENT '开户行（企业可选）',
+  `bank_account` VARCHAR(64) DEFAULT NULL COMMENT '银行账号（企业可选）',
+  `address` VARCHAR(256) DEFAULT NULL COMMENT '企业地址（企业可选）',
+  `phone` VARCHAR(20) DEFAULT NULL COMMENT '企业电话（企业可选）',
+  `receive_email` VARCHAR(128) NOT NULL COMMENT '接收邮箱',
+  `invoice_number` VARCHAR(32) DEFAULT NULL COMMENT '发票号码（管理员录入）',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0待开票 1已开票 2已驳回',
+  `reject_reason` VARCHAR(512) DEFAULT NULL COMMENT '驳回原因',
+  `admin_id` BIGINT DEFAULT NULL COMMENT '审核管理员ID',
+  `admin_name` VARCHAR(64) DEFAULT NULL COMMENT '审核管理员名称',
+  `reviewed_at` DATETIME DEFAULT NULL COMMENT '审核时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_id` (`order_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='发票申请表';
