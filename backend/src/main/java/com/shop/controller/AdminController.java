@@ -22,6 +22,7 @@ import com.shop.service.PointsLevelService;
 import com.shop.service.ShipmentService;
 import com.shop.service.ViewHistoryService;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -213,7 +214,7 @@ public class AdminController {
         String trackingNo = body.get("trackingNo") != null ? String.valueOf(body.get("trackingNo")) : null;
         BigDecimal priceDiff = null;
         if (body.get("priceDiff") != null) {
-            priceDiff = new BigDecimal(String.valueOf(body.get("priceDiff"));
+            priceDiff = new BigDecimal(String.valueOf(body.get("priceDiff")));
         }
         afterSaleService.adminShipExchange(id, company, trackingNo, priceDiff, adminId, adminName);
         return Result.ok();

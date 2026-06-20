@@ -42,12 +42,12 @@ CREATE TABLE IF NOT EXISTS `seckill_token` (
 
 -- 订单主表增加 order_type 字段和 seckill_session_id 字段
 ALTER TABLE `order_main`
-  ADD COLUMN IF NOT EXISTS `order_type` VARCHAR(20) NOT NULL DEFAULT 'normal' COMMENT '订单类型 normal=普通 seckill=秒杀' AFTER `order_no`,
-  ADD COLUMN IF NOT EXISTS `seckill_session_id` BIGINT DEFAULT NULL COMMENT '秒杀场次ID' AFTER `order_type`;
+  ADD COLUMN `order_type` VARCHAR(20) NOT NULL DEFAULT 'normal' COMMENT '订单类型 normal=普通 seckill=秒杀' AFTER `order_no`,
+  ADD COLUMN `seckill_session_id` BIGINT DEFAULT NULL COMMENT '秒杀场次ID' AFTER `order_type`;
 
 ALTER TABLE `order_main`
-  ADD KEY IF NOT EXISTS `idx_order_type` (`order_type`),
-  ADD KEY IF NOT EXISTS `idx_seckill_session` (`seckill_session_id`);
+  ADD KEY `idx_order_type` (`order_type`),
+  ADD KEY `idx_seckill_session` (`seckill_session_id`);
 
 -- 插入示例秒杀场次（3个进行中/即将开始的场次）
 INSERT INTO `seckill_session` (`product_id`, `seckill_price`, `total_stock`, `sold_stock`, `start_time`, `end_time`, `per_user_limit`, `status`)

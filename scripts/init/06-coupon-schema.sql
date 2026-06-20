@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS `user_coupon` (
 
 -- 订单主表增加优惠券字段
 ALTER TABLE `order_main`
-  ADD COLUMN IF NOT EXISTS `coupon_id` BIGINT DEFAULT NULL COMMENT '使用的优惠券ID',
-  ADD COLUMN IF NOT EXISTS `discount_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '优惠券抵扣金额',
-  ADD KEY IF NOT EXISTS `idx_coupon_id` (`coupon_id`);
+  ADD COLUMN `coupon_id` BIGINT DEFAULT NULL COMMENT '使用的优惠券ID',
+  ADD COLUMN `discount_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '优惠券抵扣金额';
+
+ALTER TABLE `order_main`
+  ADD KEY `idx_coupon_id` (`coupon_id`);

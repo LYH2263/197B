@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS `order_promotion_snapshot` (
 
 -- 订单主表增加满减字段
 ALTER TABLE `order_main`
-  ADD COLUMN IF NOT EXISTS `promotion_id` BIGINT DEFAULT NULL COMMENT '使用的满减活动ID',
-  ADD COLUMN IF NOT EXISTS `promotion_discount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '满减减免金额',
-  ADD KEY IF NOT EXISTS `idx_promotion_id` (`promotion_id`);
+  ADD COLUMN `promotion_id` BIGINT DEFAULT NULL COMMENT '使用的满减活动ID',
+  ADD COLUMN `promotion_discount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '满减减免金额';
+
+ALTER TABLE `order_main`
+  ADD KEY `idx_promotion_id` (`promotion_id`);

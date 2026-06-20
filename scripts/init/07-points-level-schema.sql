@@ -10,15 +10,15 @@ USE shop;
 
 -- 用户表扩展：积分余额、累计消费、等级
 ALTER TABLE `user`
-  ADD COLUMN IF NOT EXISTS `points` INT NOT NULL DEFAULT 0 COMMENT '积分余额' AFTER `role`,
-  ADD COLUMN IF NOT EXISTS `total_consume` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '累计消费金额' AFTER `points`,
-  ADD COLUMN IF NOT EXISTS `level` TINYINT NOT NULL DEFAULT 1 COMMENT '等级 1=Lv1 2=Lv2 3=Lv3 4=Lv4 5=Lv5' AFTER `total_consume`;
+  ADD COLUMN `points` INT NOT NULL DEFAULT 0 COMMENT '积分余额' AFTER `role`,
+  ADD COLUMN `total_consume` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '累计消费金额' AFTER `points`,
+  ADD COLUMN `level` TINYINT NOT NULL DEFAULT 1 COMMENT '等级 1=Lv1 2=Lv2 3=Lv3 4=Lv4 5=Lv5' AFTER `total_consume`;
 
 -- 订单表扩展：积分抵扣金额、使用积分数
 ALTER TABLE `order_main`
-  ADD COLUMN IF NOT EXISTS `points_discount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '积分抵扣金额' AFTER `discount_amount`,
-  ADD COLUMN IF NOT EXISTS `points_used` INT NOT NULL DEFAULT 0 COMMENT '使用积分数' AFTER `points_discount`,
-  ADD COLUMN IF NOT EXISTS `points_earned` INT NOT NULL DEFAULT 0 COMMENT '本单获得积分数' AFTER `points_used`;
+  ADD COLUMN `points_discount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '积分抵扣金额' AFTER `discount_amount`,
+  ADD COLUMN `points_used` INT NOT NULL DEFAULT 0 COMMENT '使用积分数' AFTER `points_discount`,
+  ADD COLUMN `points_earned` INT NOT NULL DEFAULT 0 COMMENT '本单获得积分数' AFTER `points_used`;
 
 -- 积分流水表
 CREATE TABLE IF NOT EXISTS `points_log` (
